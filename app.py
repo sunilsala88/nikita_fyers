@@ -19,7 +19,6 @@ type2='INDEX'
 ticker=f"{exchange}:{index_name}-{type2}"
 underlying_ticker=f"{exchange}:{index_name}-{type2}"
 
-# symbol='NSE:NIFTY2621725500CE'
 capital=12000
 lot_size=65
 candle_1='5'
@@ -39,14 +38,9 @@ time_zone="Asia/Kolkata"
 start_hour,start_min=9,20
 end_hour,end_min=15,10
 
-
-
-# ==================== CREDENTIALS ====================
-# Fyers credentials (Primary)
 access_token_fyers = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGtyRHJZZmRQT2lHTXhGc1FIUDhlRFZNMFR3T1hXQkwzVTJlWE1qenVQMGE5YVlOZVJqUUo3dEZLREFaV2VXRTZTamVQMlFGMGc4eVZmYmZjYTM4QlNBemRJUEhybkxkQkYzUWhjVHcybHVpZ0xwST0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiI5ZTZlMGVkMzU5OTY1MTU0MTllOGQ3YmE5MjE0NzYwNjc2YTNkMGZhNDI2NmY5MmM5NzRhNDBlMyIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxMjg4MjAwLCJpYXQiOjE3NzEyMjEyMjcsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTIyMTIyNywic3ViIjoiYWNjZXNzX3Rva2VuIn0.nUMcpG7uD8BNjc-1_TntSQc-7YSlTCpiEx0vt3GqSJc'
 
 
-# Kite credentials (Secondary)
 api_key = 'z59mkhj6yg8b6c81'
 access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
 
@@ -57,7 +51,41 @@ exchange_kite='MCX'
 symbol_kite = symbol    
 
 
+# Kite credentials (Secondary)
+api_key = 'z59mkhj6yg8b6c81'
+access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
 
+
+global final_data
+final_data={symbol:{}}
+
+
+# CRITICAL: Patch signal module to prevent errors in non-main threads
+# This must be done before importing fyers_apiv3 (which uses Twisted)
+import signal
+import threading
+
+# Store original functions
+_original_signal = signal.signal
+_original_set_wakeup_fd = signal.set_wakeup_fd
+
+def safe_signal(signalnum, handler):
+    """Wrapper for signal.signal that only works in main thread"""
+    if threading.current_thread() is threading.main_thread():
+        return _original_signal(signalnum, handler)
+    # In non-main thread, just return a dummy handler
+    return handler
+
+def safe_set_wakeup_fd(fd):
+    """Wrapper for signal.set_wakeup_fd that only works in main thread"""
+    if threading.current_thread() is threading.main_thread():
+        return _original_set_wakeup_fd(fd)
+    # In non-main thread, return -1 (indicating no previous fd)
+    return -1
+
+# Replace signal functions with our safe versions
+signal.signal = safe_signal
+signal.set_wakeup_fd = safe_set_wakeup_fd
 
 # Import the required module from the fyers_apiv3 package
 from fyers_apiv3 import fyersModel
@@ -72,13 +100,13 @@ import os
 import sys
 import numpy as np
 import certifi
+from kiteconnect import KiteTicker, KiteConnect
+from datetime import datetime
+import logging
+from concurrent.futures import ThreadPoolExecutor
 
 # For Windows SSL error
 os.environ['SSL_CERT_FILE'] = certifi.where()
-ist = dt.timezone("Asia/Kolkata")
-
-# Print the access token
-print('access token:', access_token_fyers)
 
 
 # Get the current time
@@ -100,21 +128,11 @@ print('available cash:', available_cash.get('fund_limit')[-1].get('equityAmount'
 
 
 
-
-
-
-
-
-
-# Cache for historical data to reduce API calls
-historical_data_cache = {}
-cache_timestamps = {}
-
 def fetchOHLC(ticker,interval,duration):
-    import datetime as dt
+    from datetime import date, timedelta
     """extracts historical data and outputs in the form of dataframe"""
     instrument = ticker
-    data = {"symbol":instrument,"resolution":interval,"date_format":"1","range_from":dt.date.today()-dt.timedelta(duration),"range_to":dt.date.today(),"cont_flag":"1",'oi_flag':"1"}
+    data = {"symbol":instrument,"resolution":interval,"date_format":"1","range_from":date.today()-timedelta(duration),"range_to":date.today(),"cont_flag":"1",'oi_flag':"1"}
     sdata=fyers.history(data)
     # print(sdata)
     sdata=pd.DataFrame(sdata['candles'])
@@ -124,7 +142,7 @@ def fetchOHLC(ticker,interval,duration):
     else:
         sdata.columns=['date','open','high','low','close','volume']
     sdata['date']=pd.to_datetime(sdata['date'], unit='s')
-    sdata.date=(sdata.date.dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata'))
+    sdata.date=(sdata.date.dt.tz_localize('UTC').dt.tz_convert(time_zone))
     sdata['date'] = sdata['date'].dt.tz_localize(None)
     sdata=sdata.set_index('date')
     return sdata
@@ -189,30 +207,53 @@ def rsi_ma(close, rsi_length=14, ma_length=14, scalar=100, drift=1, offset=0, ma
 
 
 
+async def strategy_logic():
+    """Strategy logic that runs every second"""
+    while True:
+        try:
+            global final_data
+            if dt.now(time_zone).second in range(0,60,5):
+                # Access final_data here for your strategy
+                print(symbol,final_data.get(symbol).get('ltp', 'N/A'))
+                
+                # Convert epoch timestamp to string format
+                if isinstance(final_data[symbol].get('timestamp'), (int, float)):
+                    timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
+                print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
+                print('exchange time:', timestamp_str)
+
+    
+            if dt.now(time_zone).second==1:
+                df_5=fetchOHLC(symbol_fyers,candle_1,10)
+                df_5['rsi_5']=rsi(df_5['close'], length=rsi_1)
+                df_5['rsi_smooth_5']=rsi_ma(df_5['rsi_5'])
+                df_15=fetchOHLC(symbol_fyers,candle_2,10)
+                df_15['rsi_15']=rsi(df_15['close'], length=rsi_2)
+                df_15['rsi_smooth_15']=rsi_ma(df_15['rsi_15'])
+                df_60=fetchOHLC(symbol_fyers,candle_3,10)
+                df_60['rsi_60']=rsi(df_60['close'], length=rsi_3)
+                df_60['rsi_smooth_60']=rsi_ma(df_60['rsi_60'])
+                print(df_5.tail())
+                print(df_15.tail())
+                print(df_60.tail())
+
+
+            
+            await asyncio.sleep(1)  # Run every second
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logging.error(f"Error in strategy logic: {e}")
 
 
 
-from fyers_apiv3.FyersWebsocket import data_ws
-from kiteconnect import KiteTicker, KiteConnect
-import time
-import os
-import certifi
-from datetime import datetime
-import asyncio
-import logging
-from concurrent.futures import ThreadPoolExecutor
 
 
 
 
 
-# Kite credentials (Secondary)
-api_key = 'z59mkhj6yg8b6c81'
-access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
-
-
-global final_data
-final_data={symbol:{}}
 
 # ==================== SHARED DATA ====================
 class SocketData:
@@ -291,7 +332,7 @@ class SocketData:
         
         # Convert timestamp to readable format
         if isinstance(timestamp, (int, float)):
-            time_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            time_str = dt.from_timestamp(timestamp, tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
         else:
             time_str = str(timestamp)
         
@@ -513,45 +554,6 @@ def start_kite_socket(loop):
     # Connect (blocking call in this thread)
     kws.connect(threaded=False)
 
-async def strategy_logic():
-    """Strategy logic that runs every second"""
-    while True:
-        try:
-            global final_data
-            if dt.now(time_zone).second in range(0,60,10):
-                print('strategy logic here')
-                # Access final_data here for your strategy
-                print(final_data)
-                print('system',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
-                # Convert epoch timestamp to string format
-                if isinstance(final_data[symbol].get('timestamp'), (int, float)):
-                    timestamp_str = datetime.fromtimestamp(final_data[symbol]['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
-                else:
-                    timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
-                print('exchange time:', timestamp_str)
-
-    
-            if dt.now(time_zone).second==1:
-                df_5=fetchOHLC(symbol_fyers,candle_1,10)
-                df_5['rsi_5']=rsi(df_5['close'], length=rsi_1)
-                df_5['rsi_smooth_5']=rsi_ma(df_5['rsi_5'])
-                df_15=fetchOHLC(symbol_fyers,candle_2,10)
-                df_15['rsi_15']=rsi(df_15['close'], length=rsi_2)
-                df_15['rsi_smooth_15']=rsi_ma(df_15['rsi_15'])
-                df_60=fetchOHLC(symbol_fyers,candle_3,10)
-                df_60['rsi_60']=rsi(df_60['close'], length=rsi_3)
-                df_60['rsi_smooth_60']=rsi_ma(df_60['rsi_60'])
-                print(df_5.tail())
-                print(df_15.tail())
-                print(df_60.tail())
-
-
-            
-            await asyncio.sleep(1)  # Run every second
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logging.error(f"Error in strategy logic: {e}")
 
 # ==================== MAIN ====================
 async def main():

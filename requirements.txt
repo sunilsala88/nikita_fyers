@@ -66,6 +66,7 @@ packaging
 pandas
 pandas-ta
 parso
+pendulum
 pexpect
 platformdirs
 playwright
@@ -109,7 +110,6 @@ tqdm
 traitlets
 trio
 trio-websocket
-tvdatafeed
 Twisted
 txaio
 typing_extensions

@@ -53,6 +53,7 @@ access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
 # Symbol to track
 symbol = 'CRUDEOILM26FEBFUT'
 symbol_fyers = "MCX:" + symbol
+exchange_kite='MCX'
 symbol_kite = symbol    
 
 
@@ -413,17 +414,18 @@ def start_kite_socket(loop):
             logging.error(f"Error fetching instrument: {e}")
             return None
     
-    instrument_token = get_instrument_token(symbol_kite)
+    instrument_token = get_instrument_token(symbol_kite,exchange_kite)
     if instrument_token is None:
         logging.error("Cannot start Kite socket - instrument token not found")
         return
     
-    token_symbol = {instrument_token: f"NFO:{symbol_kite}"}
+    token_symbol = {instrument_token: f"{symbol_kite}"}
     
     # Initialize KiteTicker
     kws = KiteTicker(api_key, access_token_kite)
     
     def on_ticks(ws, ticks):
+   
         for tick in ticks:
             # Extract exchange time
             exchange_time = tick.get('exchange_timestamp', None)

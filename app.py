@@ -19,7 +19,7 @@ type2='INDEX'
 ticker=f"{exchange}:{index_name}-{type2}"
 underlying_ticker=f"{exchange}:{index_name}-{type2}"
 
-symbol='NSE:NIFTY2621725500CE'
+# symbol='NSE:NIFTY2621725500CE'
 capital=12000
 lot_size=65
 candle_1='5'
@@ -51,8 +51,8 @@ api_key = 'z59mkhj6yg8b6c81'
 access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
 
 # Symbol to track
-symbol = 'NIFTY2621725500CE'
-symbol_fyers = "NSE:" + symbol
+symbol = 'CRUDEOILM26FEBFUT'
+symbol_fyers = "MCX:" + symbol
 symbol_kite = symbol    
 
 
@@ -209,10 +209,7 @@ from concurrent.futures import ThreadPoolExecutor
 api_key = 'z59mkhj6yg8b6c81'
 access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
 
-# Symbol to track
-symbol = 'NIFTY2621725500CE'
-symbol_fyers = "NSE:" + symbol
-symbol_kite = symbol
+
 global final_data
 final_data={symbol:{}}
 

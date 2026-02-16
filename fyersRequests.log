@@ -1,0 +1,4 @@
+{"level":"DEBUG","location":"[get_call:158] fyersModel","message":{"Status Code":200,"API":"/funds"},"timestamp":"2026-02-16 15:28:00,794+0530","service":"FyersAPIRequest"}
+{"level":"DEBUG","location":"[get_call:158] fyersModel","message":{"Status Code":200,"API":"/history"},"timestamp":"2026-02-16 15:28:01,992+0530","service":"FyersAPIRequest","taskName":"Task-3"}
+{"level":"DEBUG","location":"[get_call:158] fyersModel","message":{"Status Code":200,"API":"/history"},"timestamp":"2026-02-16 15:28:02,061+0530","service":"FyersAPIRequest","taskName":"Task-3"}
+{"level":"DEBUG","location":"[get_call:158] fyersModel","message":{"Status Code":200,"API":"/history"},"timestamp":"2026-02-16 15:28:02,118+0530","service":"FyersAPIRequest","taskName":"Task-3"}

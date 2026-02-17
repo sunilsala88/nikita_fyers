@@ -1,6 +1,3 @@
-
-
-
 # Replace these values with your actual API credentials
 client_id = 'DF26CD57LX-100'
 secret_key = '5SS5D9X5TR'
@@ -16,7 +13,6 @@ print(t)
 index_name='NIFTY50'
 exchange='NSE'
 type2='INDEX'
-ticker=f"{exchange}:{index_name}-{type2}"
 underlying_ticker=f"{exchange}:{index_name}-{type2}"
 
 capital=12000
@@ -38,26 +34,21 @@ time_zone="Asia/Kolkata"
 start_hour,start_min=9,20
 end_hour,end_min=15,10
 
-access_token_fyers = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGtyRHJZZmRQT2lHTXhGc1FIUDhlRFZNMFR3T1hXQkwzVTJlWE1qenVQMGE5YVlOZVJqUUo3dEZLREFaV2VXRTZTamVQMlFGMGc4eVZmYmZjYTM4QlNBemRJUEhybkxkQkYzUWhjVHcybHVpZ0xwST0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiI5ZTZlMGVkMzU5OTY1MTU0MTllOGQ3YmE5MjE0NzYwNjc2YTNkMGZhNDI2NmY5MmM5NzRhNDBlMyIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxMjg4MjAwLCJpYXQiOjE3NzEyMjEyMjcsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTIyMTIyNywic3ViIjoiYWNjZXNzX3Rva2VuIn0.nUMcpG7uD8BNjc-1_TntSQc-7YSlTCpiEx0vt3GqSJc'
+access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxBWjhTcVRVQTNKRnlwUkVnNEgyaUZZcU1POE5aaXVKMVE5N3NQcUpMQ2c2UHJZVjJ1MWhuT1BMSl81alpMMWJXRFVuNFgtRkZlLS1VSE5FUDZoMHFjM2Z1Sl93UUN2UmRFRGg5ODhnN2Y3NEVoMD0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiI3MjI3YTQ2ZjAzZGFmMmUzMzJjYWJmNTk2ZDJiMThiOWMxNmY0NjM5NjgyMWEwM2NkNmRkMmRiMCIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxMzc0NjAwLCJpYXQiOjE3NzEzMDg2NjgsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTMwODY2OCwic3ViIjoiYWNjZXNzX3Rva2VuIn0.RqNdn-Z3BaKn5B8b6lg4XhFRtGmzmQ2U0gJVZu9vtes"
+
 
 
 api_key = 'z59mkhj6yg8b6c81'
-access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
+access_token_kite = 'gmzX3pqpKPwWsLxfitlSBRdYIJhMxf1w'
 
-# Symbol to track
-symbol = 'CRUDEOILM26FEBFUT'
-symbol_fyers = "MCX:" + symbol
-exchange_kite='MCX'
-symbol_kite = symbol    
+symbol_list=['NIFTY2621725700CE']
 
-
-# Kite credentials (Secondary)
-api_key = 'z59mkhj6yg8b6c81'
-access_token_kite = 'mdi5tINmKt6Csy5NmEHBvntHYWRtKQk6'
-
+fyers_initials='NSE:'
+# Symbols to track
+exchange_kite='NFO'    
 
 global final_data
-final_data={symbol:{}}
+final_data={symbol:{} for symbol in symbol_list}
 
 
 # CRITICAL: Patch signal module to prevent errors in non-main threads
@@ -212,32 +203,40 @@ async def strategy_logic():
     while True:
         try:
             global final_data
-            if dt.now(time_zone).second in range(0,60,5):
+            if dt.now(time_zone).second in range(0,60,10):
                 # Access final_data here for your strategy
-                print(symbol,final_data.get(symbol).get('ltp', 'N/A'))
+                # print(final_data)
                 
-                # Convert epoch timestamp to string format
-                if isinstance(final_data[symbol].get('timestamp'), (int, float)):
-                    timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
-                else:
-                    timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
+                # Print data for all symbols
+                for symbol in symbol_list:
+                    if symbol in final_data and final_data[symbol]:
+                        # Convert epoch timestamp to string format
+                        if isinstance(final_data[symbol].get('timestamp'), (int, float)):
+                            timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
+                        else:
+                            timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
+                        print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
+                
                 print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
-                print('exchange time:', timestamp_str)
 
     
             if dt.now(time_zone).second==1:
-                df_5=fetchOHLC(symbol_fyers,candle_1,10)
-                df_5['rsi_5']=rsi(df_5['close'], length=rsi_1)
-                df_5['rsi_smooth_5']=rsi_ma(df_5['rsi_5'])
-                df_15=fetchOHLC(symbol_fyers,candle_2,10)
-                df_15['rsi_15']=rsi(df_15['close'], length=rsi_2)
-                df_15['rsi_smooth_15']=rsi_ma(df_15['rsi_15'])
-                df_60=fetchOHLC(symbol_fyers,candle_3,10)
-                df_60['rsi_60']=rsi(df_60['close'], length=rsi_3)
-                df_60['rsi_smooth_60']=rsi_ma(df_60['rsi_60'])
-                print(df_5.tail())
-                print(df_15.tail())
-                print(df_60.tail())
+                # Fetch OHLC data for all symbols
+                for symbol in symbol_list:
+                    symbol_fyers = fyers_initials + symbol
+                    print(f"\n--- Fetching data for {symbol} ---")
+                    df_5=fetchOHLC(symbol_fyers,candle_1,10)
+                    df_5['rsi_5']=rsi(df_5['close'], length=rsi_1)
+                    df_5['rsi_smooth_5']=rsi_ma(df_5['rsi_5'])
+                    df_15=fetchOHLC(symbol_fyers,candle_2,10)
+                    df_15['rsi_15']=rsi(df_15['close'], length=rsi_2)
+                    df_15['rsi_smooth_15']=rsi_ma(df_15['rsi_15'])
+                    df_60=fetchOHLC(symbol_fyers,candle_3,10)
+                    df_60['rsi_60']=rsi(df_60['close'], length=rsi_3)
+                    df_60['rsi_smooth_60']=rsi_ma(df_60['rsi_60'])
+                    print(df_5.tail())
+                    print(df_15.tail())
+                    print(df_60.tail())
 
 
             
@@ -336,24 +335,33 @@ class SocketData:
         else:
             time_str = str(timestamp)
         
-        # Save data to final_data
-        final_data[symbol] = {
-            'source': source,
-            'timestamp': timestamp,
-            'time_str': time_str,
-            'ltp': data.get('ltp', 'N/A'),
-            'volume': data.get('volume', 'N/A'),
-            'buy_price': data.get('buy_price', 'N/A'),
-            'buy_quantity': data.get('buy_quantity', 'N/A'),
-            'sell_price': data.get('sell_price', 'N/A'),
-            'sell_quantity': data.get('sell_quantity', 'N/A'),
-            'change': data.get('change', 'N/A'),
-            'open': data.get('open', 'N/A'),
-            'high': data.get('high', 'N/A'),
-            'low': data.get('low', 'N/A'),
-            'close': data.get('close', 'N/A'),
-            'symbol': data.get('symbol', 'N/A')
-        }
+        # Extract symbol from data to determine which symbol's data to update
+        symbol_key = data.get('symbol', 'N/A')
+        
+        # Extract just the symbol name from Fyers format (e.g., "MCX:CRUDEOILM26FEBFUT" -> "CRUDEOILM26FEBFUT")
+        if ':' in str(symbol_key):
+            symbol_key = symbol_key.split(':')[-1]
+        
+        # Only save if this symbol is in our symbol_list
+        if symbol_key in symbol_list:
+            # Save data to final_data
+            final_data[symbol_key] = {
+                'source': source,
+                'timestamp': timestamp,
+                'time_str': time_str,
+                'ltp': data.get('ltp', 'N/A'),
+                'volume': data.get('volume', 'N/A'),
+                'buy_price': data.get('buy_price', 'N/A'),
+                'buy_quantity': data.get('buy_quantity', 'N/A'),
+                'sell_price': data.get('sell_price', 'N/A'),
+                'sell_quantity': data.get('sell_quantity', 'N/A'),
+                'change': data.get('change', 'N/A'),
+                'open': data.get('open', 'N/A'),
+                'high': data.get('high', 'N/A'),
+                'low': data.get('low', 'N/A'),
+                'close': data.get('close', 'N/A'),
+                'symbol': symbol_key
+            }
         
         # print(f"\n{'='*60}")
         # print(f"📊 DATA SOURCE: {source}")
@@ -415,8 +423,10 @@ def start_fyers_socket(loop):
     def onopen():
         logging.info("Fyers Connection established")
         data_type = "SymbolUpdate"
-        fyers_ws.subscribe(symbols=[symbol_fyers], data_type=data_type)
-        logging.info(f"Subscribed to {symbol_fyers} on Fyers")
+        # Subscribe to all symbols in symbol_list
+        fyers_symbols = [f"{fyers_initials}{s}" for s in symbol_list]
+        fyers_ws.subscribe(symbols=fyers_symbols, data_type=data_type)
+        logging.info(f"Subscribed to {len(fyers_symbols)} symbols on Fyers: {fyers_symbols}")
     
     # Create Fyers WebSocket instance
     fyers_ws = data_ws.FyersDataSocket(
@@ -441,26 +451,30 @@ def start_kite_socket(loop):
     kite = KiteConnect(api_key=api_key)
     kite.set_access_token(access_token_kite)
     
-    # Get instrument token
-    def get_instrument_token(symbol_name, exchange='NFO'):
+    # Get instrument tokens for all symbols
+    def get_instrument_tokens(symbol_names, exchange='NFO'):
         try:
             instruments = kite.instruments(exchange)
-            for instrument in instruments:
-                if instrument['tradingsymbol'] == symbol_name:
-                    logging.info(f"Found instrument: {instrument['tradingsymbol']} (Token: {instrument['instrument_token']})")
-                    return instrument['instrument_token']
-            logging.error(f"Symbol {symbol_name} not found in {exchange}")
-            return None
+            token_map = {}
+            for symbol_name in symbol_names:
+                for instrument in instruments:
+                    if instrument['tradingsymbol'] == symbol_name:
+                        token_map[instrument['instrument_token']] = symbol_name
+                        logging.info(f"Found instrument: {instrument['tradingsymbol']} (Token: {instrument['instrument_token']})")
+                        break
+                else:
+                    logging.error(f"Symbol {symbol_name} not found in {exchange}")
+            return token_map
         except Exception as e:
-            logging.error(f"Error fetching instrument: {e}")
-            return None
+            logging.error(f"Error fetching instruments: {e}")
+            return {}
     
-    instrument_token = get_instrument_token(symbol_kite,exchange_kite)
-    if instrument_token is None:
-        logging.error("Cannot start Kite socket - instrument token not found")
+    token_symbol = get_instrument_tokens(symbol_list, exchange_kite)
+    if not token_symbol:
+        logging.error("Cannot start Kite socket - no instrument tokens found")
         return
     
-    token_symbol = {instrument_token: f"{symbol_kite}"}
+    instrument_tokens = list(token_symbol.keys())
     
     # Initialize KiteTicker
     kws = KiteTicker(api_key, access_token_kite)
@@ -527,9 +541,9 @@ def start_kite_socket(loop):
     
     def on_connect(ws, response):
         logging.info("Kite Connected to websocket!")
-        ws.subscribe([instrument_token])
-        ws.set_mode(ws.MODE_FULL, [instrument_token])
-        logging.info(f"Subscribed to {symbol_kite} on Kite")
+        ws.subscribe(instrument_tokens)
+        ws.set_mode(ws.MODE_FULL, instrument_tokens)
+        logging.info(f"Subscribed to {len(instrument_tokens)} symbols on Kite: {list(token_symbol.values())}")
     
     def on_close(ws, code, reason):
         logging.info(f"Kite Connection closed: {code} - {reason}")
@@ -561,7 +575,7 @@ async def main():
     print("\n" + "="*60)
     print("🚀 DUAL SOCKET HANDLER - STARTED (Asyncio)")
     print("="*60)
-    print(f"Symbol: {symbol}")
+    print(f"Symbols: {symbol_list}")
     print(f"Primary Source: Fyers")
     print(f"Secondary Source: Kite")
     print(f"Strategy: Use whichever has latest exchange time")

@@ -10,10 +10,6 @@ import pyotp as tp
 t=tp.TOTP(totp_key).now()
 print(t)
 
-index_name='NIFTY50'
-exchange='NSE'
-type2='INDEX'
-underlying_ticker=f"{exchange}:{index_name}-{type2}"
 
 capital=12000
 lot_size=65
@@ -34,22 +30,22 @@ time_zone="Asia/Kolkata"
 start_hour,start_min=9,20
 end_hour,end_min=15,10
 
-access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxBWjhTcVRVQTNKRnlwUkVnNEgyaUZZcU1POE5aaXVKMVE5N3NQcUpMQ2c2UHJZVjJ1MWhuT1BMSl81alpMMWJXRFVuNFgtRkZlLS1VSE5FUDZoMHFjM2Z1Sl93UUN2UmRFRGg5ODhnN2Y3NEVoMD0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiI3MjI3YTQ2ZjAzZGFmMmUzMzJjYWJmNTk2ZDJiMThiOWMxNmY0NjM5NjgyMWEwM2NkNmRkMmRiMCIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxMzc0NjAwLCJpYXQiOjE3NzEzMDg2NjgsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTMwODY2OCwic3ViIjoiYWNjZXNzX3Rva2VuIn0.RqNdn-Z3BaKn5B8b6lg4XhFRtGmzmQ2U0gJVZu9vtes"
-
-
-
+access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxXelJEQjFiZnNMa1pyclpoOTFLRl9fNmJUZHJpbjFaaFZWQTNjeTJtMUx6ekozLW9vSUM4OWM4UF9WdVNhQk1CMi16V3pjSXN6SXBLMEEyYzVzUmRlT2w4Y2ZneXlHLXZuWEx5aUNPX2wyWGJDRT0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxNDYxMDAwLCJpYXQiOjE3NzE0MDA0MDEsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTQwMDQwMSwic3ViIjoiYWNjZXNzX3Rva2VuIn0.PHtmBFF4JjU7wxx4avO9AbDRIEkRUy703_qQ87skI-I"
 api_key = 'z59mkhj6yg8b6c81'
-access_token_kite = 'gmzX3pqpKPwWsLxfitlSBRdYIJhMxf1w'
+access_token_kite = 'QX5vUx4BiSAtvJe6b5jEBmPhCUjZYn4s'
 
-symbol_list=['NIFTY2621725700CE']
-
-fyers_initials='NSE:'
-# Symbols to track
-exchange_kite='NFO'    
-
+index_name='NIFTY50'
+exchange='NSE'
+type2='INDEX'
+fyers_underlying_index=f"{exchange}:{index_name}-{type2}"
+kite_index={'NIFTY50':256265,'NIFTYBANK':260105}
+kite_underlying_index_token=kite_index.get(index_name)
+symbol_list=['CRUDEOILM26FEBFUT']
+fyers_initials='MCX:'
+exchange_kite='MCX'    
 global final_data
 final_data={symbol:{} for symbol in symbol_list}
-
+final_data[index_name]={}
 
 # CRITICAL: Patch signal module to prevent errors in non-main threads
 # This must be done before importing fyers_apiv3 (which uses Twisted)
@@ -195,6 +191,54 @@ def rsi_ma(close, rsi_length=14, ma_length=14, scalar=100, drift=1, offset=0, ma
     ma.name = f"RSI_MA_{ma_length}"
     return ma.round(1)
 
+def atr(df, length=14):
+    """Calculate Average True Range (ATR)"""
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    atr = true_range.rolling(window=length, min_periods=length).mean()
+    return atr
+
+global df_5,df_15,df_60
+def main_strategy_second():
+    global df_5,df_15,df_60
+        
+    if dt.now(time_zone).second==1:
+        # Fetch OHLC data for all symbols
+        for symbol in symbol_list:
+            symbol_fyers = fyers_initials + symbol
+            print(f"\n--- Fetching data for {symbol} ---")
+            df_5=fetchOHLC(symbol_fyers,candle_1,10)
+            df_5['rsi']=rsi(df_5['close'], length=rsi_1)
+            df_5['rsi_smooth']=rsi_ma(df_5['rsi'])
+            df_5['atr']=atr(df_5)
+            df_15=fetchOHLC(symbol_fyers,candle_2,10)
+            df_15['rsi']=rsi(df_15['close'], length=rsi_2)
+            df_15['rsi_smooth']=rsi_ma(df_15['rsi'])
+            df_60=fetchOHLC(symbol_fyers,candle_3,10)
+            df_60['rsi']=rsi(df_60['close'], length=rsi_3)
+            df_60['rsi_smooth']=rsi_ma(df_60['rsi'])
+            print(df_5.tail())
+            print(df_15.tail())
+            print(df_60.tail())
+
+
+    if dt.now(time_zone).second in range(0,60,10):
+        for symbol in symbol_list:
+            if symbol in final_data and final_data[symbol]:
+                # Convert epoch timestamp to string format
+                if isinstance(final_data[symbol].get('timestamp'), (int, float)):
+                    timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
+                print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
+                
+        
+        print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
+
+
+    print(final_data)
 
 
 
@@ -203,43 +247,7 @@ async def strategy_logic():
     while True:
         try:
             global final_data
-            if dt.now(time_zone).second in range(0,60,10):
-                # Access final_data here for your strategy
-                # print(final_data)
-                
-                # Print data for all symbols
-                for symbol in symbol_list:
-                    if symbol in final_data and final_data[symbol]:
-                        # Convert epoch timestamp to string format
-                        if isinstance(final_data[symbol].get('timestamp'), (int, float)):
-                            timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
-                        else:
-                            timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
-                        print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
-                
-                print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
-
-    
-            if dt.now(time_zone).second==1:
-                # Fetch OHLC data for all symbols
-                for symbol in symbol_list:
-                    symbol_fyers = fyers_initials + symbol
-                    print(f"\n--- Fetching data for {symbol} ---")
-                    df_5=fetchOHLC(symbol_fyers,candle_1,10)
-                    df_5['rsi_5']=rsi(df_5['close'], length=rsi_1)
-                    df_5['rsi_smooth_5']=rsi_ma(df_5['rsi_5'])
-                    df_15=fetchOHLC(symbol_fyers,candle_2,10)
-                    df_15['rsi_15']=rsi(df_15['close'], length=rsi_2)
-                    df_15['rsi_smooth_15']=rsi_ma(df_15['rsi_15'])
-                    df_60=fetchOHLC(symbol_fyers,candle_3,10)
-                    df_60['rsi_60']=rsi(df_60['close'], length=rsi_3)
-                    df_60['rsi_smooth_60']=rsi_ma(df_60['rsi_60'])
-                    print(df_5.tail())
-                    print(df_15.tail())
-                    print(df_60.tail())
-
-
-            
+            main_strategy_second()            
             await asyncio.sleep(1)  # Run every second
         except asyncio.CancelledError:
             break
@@ -342,8 +350,16 @@ class SocketData:
         if ':' in str(symbol_key):
             symbol_key = symbol_key.split(':')[-1]
         
-        # Only save if this symbol is in our symbol_list
-        if symbol_key in symbol_list:
+        # Check if it's the index (handle NIFTY50-INDEX -> NIFTY50 mapping)
+        is_index = False
+        if '-INDEX' in str(symbol_key):
+            base_symbol = symbol_key.replace('-INDEX', '')
+            if base_symbol == index_name:
+                is_index = True
+                symbol_key = index_name  # Use index_name as key
+        
+        # Only save if this symbol is in our symbol_list or is the index
+        if symbol_key in symbol_list or is_index:
             # Save data to final_data
             final_data[symbol_key] = {
                 'source': source,
@@ -388,6 +404,7 @@ shared_data = SocketData()
 def start_fyers_socket(loop):
     """Start Fyers WebSocket connection (runs in executor thread)"""
     def onmessage(message):
+        # print('fyers',message)
         if isinstance(message, dict):
             # Extract exchange time (epoch timestamp)
             exchange_time = message.get('exch_feed_time', 0)
@@ -407,6 +424,8 @@ def start_fyers_socket(loop):
                 'low': message.get('low_price', 'N/A'),
                 'close': message.get('prev_close_price', 'N/A')
             }
+            # print('fyers message received')
+            # print(message)
             
             # Schedule update in the event loop
             asyncio.run_coroutine_threadsafe(
@@ -425,6 +444,8 @@ def start_fyers_socket(loop):
         data_type = "SymbolUpdate"
         # Subscribe to all symbols in symbol_list
         fyers_symbols = [f"{fyers_initials}{s}" for s in symbol_list]
+        # Add underlying index to subscription
+        fyers_symbols.append(fyers_underlying_index)
         fyers_ws.subscribe(symbols=fyers_symbols, data_type=data_type)
         logging.info(f"Subscribed to {len(fyers_symbols)} symbols on Fyers: {fyers_symbols}")
     
@@ -470,6 +491,10 @@ def start_kite_socket(loop):
             return {}
     
     token_symbol = get_instrument_tokens(symbol_list, exchange_kite)
+    
+    # Add underlying index token (always add this even if symbols not found)
+    token_symbol[kite_underlying_index_token] = index_name
+    
     if not token_symbol:
         logging.error("Cannot start Kite socket - no instrument tokens found")
         return
@@ -480,6 +505,7 @@ def start_kite_socket(loop):
     kws = KiteTicker(api_key, access_token_kite)
     
     def on_ticks(ws, ticks):
+        # print('kite data',ticks)
    
         for tick in ticks:
             # Extract exchange time
@@ -532,6 +558,8 @@ def start_kite_socket(loop):
                 'low': low_price,
                 'close': close_price
             }
+            # print('kite message received')
+            # print(data)
             
             # Schedule update in the event loop
             asyncio.run_coroutine_threadsafe(

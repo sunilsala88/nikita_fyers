@@ -173,7 +173,7 @@ def rsi(close, length=14, scalar=100, drift=1, offset=0, **kwargs):
     if "fill_method" in kwargs:
         rsi.fillna(method=kwargs["fill_method"], inplace=True)
 
-    return rsi.round(1)
+    return rsi.round(2)
 
 def rsi_ma(close, rsi_length=14, ma_length=14, scalar=100, drift=1, offset=0, ma_type='sma', **kwargs):
     """
@@ -190,7 +190,7 @@ def rsi_ma(close, rsi_length=14, ma_length=14, scalar=100, drift=1, offset=0, ma
     if offset:
         ma = ma.shift(offset)
     ma.name = f"RSI_MA_{ma_length}"
-    return ma.round(1)
+    return ma.round(2)
 
 def atr(df, length=14):
     """Calculate Average True Range (ATR)"""
@@ -202,7 +202,10 @@ def atr(df, length=14):
     return atr
 
 global df_5,df_15,df_60
+
+trade_flag=0
 def main_strategy_second():
+    global trade_flag
     global df_5,df_15,df_60
         
     if dt.now(time_zone).second==1:
@@ -213,7 +216,8 @@ def main_strategy_second():
             df_5=fetchOHLC(symbol_fyers,candle_1,10)
             df_5['rsi']=rsi(df_5['close'], length=rsi_1)
             df_5['rsi_smooth']=rsi_ma(df_5['rsi'])
-            df_5['atr']=atr(df_5)
+            df_5['rsi_flag'] = (df_5['rsi'] > df_5['rsi_smooth']).astype(bool)
+            df_5.to_csv('5min.csv')
             df_15=fetchOHLC(symbol_fyers,candle_2,10)
             df_15['rsi']=rsi(df_15['close'], length=rsi_2)
             df_15['rsi_smooth']=rsi_ma(df_15['rsi'])
@@ -227,6 +231,7 @@ def main_strategy_second():
         index_5=fetchOHLC(fyers_underlying_index,candle_1,10)
         index_5['rsi']=rsi(index_5['close'], length=rsi_1)
         index_5['rsi_smooth']=rsi_ma(index_5['rsi'])
+        index_5['rsi_flag']=index_5['rsi']>index_5['rsi_smooth']
         index_15=fetchOHLC(fyers_underlying_index,candle_2,10)
         index_15['rsi']=rsi(index_15['close'], length=rsi_2)
         index_15['rsi_smooth']=rsi_ma(index_15['rsi'])
@@ -238,26 +243,34 @@ def main_strategy_second():
         print(index_60.tail())
 
 
-    if dt.now(time_zone).second in range(0,60,10):
-        for symbol in symbol_list:
-            if symbol in final_data and final_data[symbol]:
-                # Convert epoch timestamp to string format
-                if isinstance(final_data[symbol].get('timestamp'), (int, float)):
-                    timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
-                else:
-                    timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
-                print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
+    # if dt.now(time_zone).second in range(0,60,10):
+    #     for symbol in symbol_list:
+    #         if symbol in final_data and final_data[symbol]:
+    #             # Convert epoch timestamp to string format
+    #             if isinstance(final_data[symbol].get('timestamp'), (int, float)):
+    #                 timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
+    #             else:
+    #                 timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
+    #             print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
                 
         
-        print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
+    #     print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
 
 
-    # ticker=symbol_list[0]
-    # ticker_price=final_data[ticker].get('ltp', 'N/A')
-    # print(ticker,ticker_price)
-    print(final_data)
+    ticker=symbol_list[0]
+    ticker_price=final_data[ticker].get('ltp', 'N/A')
+    print(dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'), ticker,ticker_price)
 
 
+    #entry condition
+    if trade_flag == 0 and df_5['rsi_flag'].iloc[-2] :
+        print('entry condition met')
+        current_high=df_5['high'].iloc[-2]
+        trade_flag=1
+    
+
+
+ 
 
 async def strategy_logic():
     """Strategy logic that runs every second"""

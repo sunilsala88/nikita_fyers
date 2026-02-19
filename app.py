@@ -9,7 +9,10 @@ totp_key='6ITMUZAD7POI44YBWQFEGODOQAUAF3ZH'
 import pyotp as tp
 t=tp.TOTP(totp_key).now()
 print(t)
-
+secondary_data=True
+if secondary_data:
+    api_key = 'z59mkhj6yg8b6c81'
+    access_token_kite = 'GWB2d8yzXuqKXlULpsTxLoqp4W4FyY9A'
 
 capital=12000
 lot_size=65
@@ -30,9 +33,7 @@ time_zone="Asia/Kolkata"
 start_hour,start_min=9,20
 end_hour,end_min=15,10
 
-access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxXelJEQjFiZnNMa1pyclpoOTFLRl9fNmJUZHJpbjFaaFZWQTNjeTJtMUx6ekozLW9vSUM4OWM4UF9WdVNhQk1CMi16V3pjSXN6SXBLMEEyYzVzUmRlT2w4Y2ZneXlHLXZuWEx5aUNPX2wyWGJDRT0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxNDYxMDAwLCJpYXQiOjE3NzE0MDA0MDEsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTQwMDQwMSwic3ViIjoiYWNjZXNzX3Rva2VuIn0.PHtmBFF4JjU7wxx4avO9AbDRIEkRUy703_qQ87skI-I"
-api_key = 'z59mkhj6yg8b6c81'
-access_token_kite = 'QX5vUx4BiSAtvJe6b5jEBmPhCUjZYn4s'
+access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxwQlhURUVJM0Zmb1o2aEMxVE9jYUlyaDQyZTUxR0RvYlZlVG1uOEdrZTlTTXYxM1BXQlRIRy1nSnlrWHZ1RmgwZVp1TjVueXBFSGlWU1I0bzlJM2VkUksxd3phV1hTWUJLUlpERmZUOW1rNjJtOD0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxNTQ3NDAwLCJpYXQiOjE3NzE0NzUwMzEsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTQ3NTAzMSwic3ViIjoiYWNjZXNzX3Rva2VuIn0.meindGW5eW1K_1-KPdEBZoB7gt7Ilvf-8WpsSUkvFgc"
 
 index_name='NIFTY50'
 exchange='NSE'
@@ -40,9 +41,9 @@ type2='INDEX'
 fyers_underlying_index=f"{exchange}:{index_name}-{type2}"
 kite_index={'NIFTY50':256265,'NIFTYBANK':260105}
 kite_underlying_index_token=kite_index.get(index_name)
-symbol_list=['CRUDEOILM26FEBFUT']
-fyers_initials='MCX:'
-exchange_kite='MCX'    
+symbol_list=['NIFTY26FEB25750CE']
+fyers_initials='NSE:'
+exchange_kite='NFO'    
 global final_data
 final_data={symbol:{} for symbol in symbol_list}
 final_data[index_name]={}
@@ -222,6 +223,19 @@ def main_strategy_second():
             print(df_5.tail())
             print(df_15.tail())
             print(df_60.tail())
+        #underlying index data
+        index_5=fetchOHLC(fyers_underlying_index,candle_1,10)
+        index_5['rsi']=rsi(index_5['close'], length=rsi_1)
+        index_5['rsi_smooth']=rsi_ma(index_5['rsi'])
+        index_15=fetchOHLC(fyers_underlying_index,candle_2,10)
+        index_15['rsi']=rsi(index_15['close'], length=rsi_2)
+        index_15['rsi_smooth']=rsi_ma(index_15['rsi'])
+        index_60=fetchOHLC(fyers_underlying_index,candle_3,10)
+        index_60['rsi']=rsi(index_60['close'], length=rsi_3)
+        index_60['rsi_smooth']=rsi_ma(index_60['rsi'])
+        print(index_5.tail())
+        print(index_15.tail())
+        print(index_60.tail())
 
 
     if dt.now(time_zone).second in range(0,60,10):
@@ -238,6 +252,9 @@ def main_strategy_second():
         print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
 
 
+    # ticker=symbol_list[0]
+    # ticker_price=final_data[ticker].get('ltp', 'N/A')
+    # print(ticker,ticker_price)
     print(final_data)
 
 
@@ -298,7 +315,7 @@ class SocketData:
                 source_name, data, timestamp = await self.data_queue.get()
                 
                 # Determine which socket has the latest data
-                if self.fyers_timestamp > 0 and self.kite_timestamp > 0:
+                if secondary_data and self.fyers_timestamp > 0 and self.kite_timestamp > 0:
                     if self.fyers_timestamp >= self.kite_timestamp:
                         source = "FYERS (Primary)"
                         display_data = self.fyers_data
@@ -311,7 +328,7 @@ class SocketData:
                     source = "FYERS (Primary)"
                     display_data = self.fyers_data
                     display_timestamp = self.fyers_timestamp
-                elif self.kite_timestamp > 0:
+                elif secondary_data and self.kite_timestamp > 0:
                     source = "KITE (Secondary)"
                     display_data = self.kite_data
                     display_timestamp = self.kite_timestamp
@@ -357,6 +374,10 @@ class SocketData:
             if base_symbol == index_name:
                 is_index = True
                 symbol_key = index_name  # Use index_name as key
+        
+        # Also check if symbol_key is directly the index_name
+        if symbol_key == index_name:
+            is_index = True
         
         # Only save if this symbol is in our symbol_list or is the index
         if symbol_key in symbol_list or is_index:
@@ -404,6 +425,7 @@ shared_data = SocketData()
 def start_fyers_socket(loop):
     """Start Fyers WebSocket connection (runs in executor thread)"""
     def onmessage(message):
+
         # print('fyers',message)
         if isinstance(message, dict):
             # Extract exchange time (epoch timestamp)
@@ -468,6 +490,10 @@ def start_fyers_socket(loop):
 # ==================== KITE SOCKET (SECONDARY) ====================
 def start_kite_socket(loop):
     """Start Kite WebSocket connection (runs in executor thread)"""
+    if not secondary_data:
+        logging.info("Kite socket disabled (secondary_data=False)")
+        return
+    
     # Initialize KiteConnect
     kite = KiteConnect(api_key=api_key)
     kite.set_access_token(access_token_kite)
@@ -500,10 +526,13 @@ def start_kite_socket(loop):
         return
     
     instrument_tokens = list(token_symbol.keys())
+    print("kite tokens",instrument_tokens)
     
     # Initialize KiteTicker
     kws = KiteTicker(api_key, access_token_kite)
-    
+
+# kite data [{'tradable': False, 'mode': 'full', 'instrument_token': 256265, 'last_price': 25769.55, 'ohlc': {'high': 25885.3, 'low': 25763.0, 'open': 25873.35, 'close': 25819.35}, 'change': -0.19287859686630096, 'exchange_timestamp': datetime.datetime(2026, 2, 19, 10, 13, 16)}]
+
     def on_ticks(ws, ticks):
         # print('kite data',ticks)
    
@@ -511,11 +540,36 @@ def start_kite_socket(loop):
             # Extract exchange time
             exchange_time = tick.get('exchange_timestamp', None)
             
-            # Convert to epoch timestamp if it's a datetime object
+            # Convert to epoch timestamp if it's a datetime object (do this FIRST)
             if isinstance(exchange_time, datetime):
                 exchange_time = exchange_time.timestamp()
             elif exchange_time is None:
                 exchange_time = 0
+            
+            token=tick.get('instrument_token', None)
+            name=token_symbol.get(token, 'N/A')
+            # print(name)
+
+            if name==index_name:
+                # print('index tick',tick)
+                # Prepare index data in standardized format
+                index_data = {
+                    'ltp': tick.get('last_price', 'N/A'),
+
+                    'change': tick.get('change', 'N/A'),
+                    'symbol': index_name,
+                    'open': tick['ohlc'].get('open', 'N/A'),
+                    'high': tick['ohlc'].get('high', 'N/A'),
+                    'low': tick['ohlc'].get('low', 'N/A'),
+                    'close': tick['ohlc'].get('close', 'N/A')
+                }
+                # Update final_data with index data
+                # final_data[index_name] = index_data
+                # print(index_data)
+                asyncio.run_coroutine_threadsafe(
+                shared_data.update_kite(index_data, exchange_time),
+                loop
+            )
             
             # Extract depth data
             buy_quantity = 'N/A'
@@ -570,6 +624,7 @@ def start_kite_socket(loop):
     def on_connect(ws, response):
         logging.info("Kite Connected to websocket!")
         ws.subscribe(instrument_tokens)
+        ws.subscribe([kite_underlying_index_token])  # Ensure underlying index is subscribed
         ws.set_mode(ws.MODE_FULL, instrument_tokens)
         logging.info(f"Subscribed to {len(instrument_tokens)} symbols on Kite: {list(token_symbol.values())}")
     
@@ -605,8 +660,12 @@ async def main():
     print("="*60)
     print(f"Symbols: {symbol_list}")
     print(f"Primary Source: Fyers")
-    print(f"Secondary Source: Kite")
-    print(f"Strategy: Use whichever has latest exchange time")
+    if secondary_data:
+        print(f"Secondary Source: Kite")
+        print(f"Strategy: Use whichever has latest exchange time")
+    else:
+        print(f"Secondary Source: Disabled")
+        print(f"Strategy: Use Fyers only")
     print("="*60 + "\n")
     
     # Initialize shared data in async context
@@ -616,7 +675,8 @@ async def main():
     loop = asyncio.get_event_loop()
     
     # Create thread pool executor for blocking websocket operations
-    executor = ThreadPoolExecutor(max_workers=2)
+    max_workers = 2 if secondary_data else 1
+    executor = ThreadPoolExecutor(max_workers=max_workers)
     
     # Start data processor task
     processor_task = asyncio.create_task(shared_data.process_data_stream())
@@ -624,16 +684,20 @@ async def main():
     # Start strategy logic task (runs every second)
     strategy_task = asyncio.create_task(strategy_logic())
     
-    # Start both websockets in executor threads
+    # Start websockets in executor threads
     # Give Fyers a slight head start (primary source)
     fyers_task = loop.run_in_executor(executor, start_fyers_socket, loop)
-    await asyncio.sleep(2)
-    kite_task = loop.run_in_executor(executor, start_kite_socket, loop)
-
+    
+    tasks = [fyers_task, processor_task, strategy_task]
+    
+    if secondary_data:
+        await asyncio.sleep(2)
+        kite_task = loop.run_in_executor(executor, start_kite_socket, loop)
+        tasks.append(kite_task)
     
     try:
-        # Run both websockets, processor, and strategy concurrently
-        await asyncio.gather(fyers_task, kite_task, processor_task, strategy_task)
+        # Run websockets, processor, and strategy concurrently
+        await asyncio.gather(*tasks)
     except asyncio.CancelledError:
         print("\n\n" + "="*60)
         print("🛑 SHUTTING DOWN DUAL SOCKET HANDLER")

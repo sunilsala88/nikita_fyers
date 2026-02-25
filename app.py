@@ -12,28 +12,36 @@ print(t)
 secondary_data=True
 if secondary_data:
     api_key = 'z59mkhj6yg8b6c81'
-    access_token_kite = 'GWB2d8yzXuqKXlULpsTxLoqp4W4FyY9A'
+    access_token_kite = 'lBFANONliGNFlnpESDBkcudfAAdOcFeU'
+threshold=12
+take_type={'FIXED':1,'PERCENTAGE':2,'RANGE':3}
+T1 = 'RANGE'; v1 = 0.3
+T2 = 'RANGE'; v2 = 1    ;v2_pos=0.5
+T3 = 'RANGE'; v3 = 1.5  ;v3_pos=0.5
+T4 = 'RANGE'; v4 = 2    ;v4_pos=0
+T5 = 'RANGE'; v5 = 3    ;v5_pos=0
 
 capital=12000
 lot_size=65
+quantity_position=2
 candle_1='5'
 candle_2='15'
 candle_3='60'
-rsi_1=14
-rsi_smooth_1=14
-rsi_2=14
-rsi_smooth_2=14
-rsi_3=14
-rsi_smooth_3=14
+min_15_condition=True
+min_60_condition=True
+index_15_condition=True
+rsi_1=14;rsi_smooth_1=14
+rsi_2=14;rsi_smooth_2=14
+rsi_3=14;rsi_smooth_3=14
 atr_length=14
-track_pnl_strategy=True
 strategy_name='nikita'
 account_type='LIVE'
 time_zone="Asia/Kolkata"
 start_hour,start_min=9,20
 end_hour,end_min=15,10
 
-access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcGxwQlhURUVJM0Zmb1o2aEMxVE9jYUlyaDQyZTUxR0RvYlZlVG1uOEdrZTlTTXYxM1BXQlRIRy1nSnlrWHZ1RmgwZVp1TjVueXBFSGlWU1I0bzlJM2VkUksxd3phV1hTWUJLUlpERmZUOW1rNjJtOD0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcxNTQ3NDAwLCJpYXQiOjE3NzE0NzUwMzEsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTQ3NTAzMSwic3ViIjoiYWNjZXNzX3Rva2VuIn0.meindGW5eW1K_1-KPdEBZoB7gt7Ilvf-8WpsSUkvFgc"
+access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcG5vN3lVVk94STZZbGQtTVU1UGpsMXQ5MzZqazdsekVSTTUzV2g4Z05jSTd1LVpNaEJlU2dWSHFVZU91dDVxcHhvUGlyNGZ4bmt4NVRrcGdNVHRBV2NyeXNHQWY1OTdEWkJiVEF5ODBNMU5wWEJxWT0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcyMDY1ODAwLCJpYXQiOjE3NzE5OTg5NjIsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTk5ODk2Miwic3ViIjoiYWNjZXNzX3Rva2VuIn0.-mtMKhSxJx6WvW7r5W6L7F5_lf8qDxKEjRtzNIye4iM"
+
 
 index_name='NIFTY50'
 exchange='NSE'
@@ -41,7 +49,7 @@ type2='INDEX'
 fyers_underlying_index=f"{exchange}:{index_name}-{type2}"
 kite_index={'NIFTY50':256265,'NIFTYBANK':260105}
 kite_underlying_index_token=kite_index.get(index_name)
-symbol_list=['NIFTY26FEB25750CE']
+symbol_list=['NIFTY2630225650CE']
 fyers_initials='NSE:'
 exchange_kite='NFO'    
 global final_data
@@ -92,6 +100,32 @@ from kiteconnect import KiteTicker, KiteConnect
 from datetime import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor
+
+#disable fyersApi and Fyers Request logs
+import logging
+
+#disable logging for fyersApi
+fyersModel.logging.getLogger().setLevel(logging.CRITICAL)
+
+# Disable HTTP connection logs from requests and urllib3
+logging.getLogger("requests").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
+logging.getLogger("requests.packages.urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(logging.CRITICAL)
+
+
+# Configure logging with custom formatter
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s || %(message)s",
+    handlers=[
+        logging.FileHandler(f'{strategy_name}_{dt.now(time_zone).date()}.log', mode='a'),
+        logging.StreamHandler()
+    ]
+)
+
+
 
 # For Windows SSL error
 os.environ['SSL_CERT_FILE'] = certifi.where()
@@ -203,16 +237,139 @@ def atr(df, length=14):
 
 global df_5,df_15,df_60
 
-trade_flag=0
-def main_strategy_second():
-    global trade_flag
-    global df_5,df_15,df_60
+# Initialize dataframes as None
+df_5 = None
+df_15 = None
+df_60 = None
+
+# Function to store data using pickle
+def store(data, account_type):
+    pickle.dump(data, open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'wb'))
+
+# Function to load data using pickle
+def load(account_type):
+    return pickle.load(open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'rb'))
+
+try:
+        real_info = load(account_type)
+        if real_info.get(symbol_list[0]) is None:
+            logging.info("No existing data found for symbol - initializing new real_info structure")
+            print("No existing data found for symbol - initializing new real_info structure")
+            real_info = { symbol_list[0]:{
+                'trade_flag':0,
+                'buy_price':0,
+                'quantity':0,
+                'pnl':0,        
+                'condition':False,
+                'wait_until':None,
+                'high':0,
+                'low':0,
+                'range':0,
+                "targets":{},
+                'crossover_active':False,
+                'trade_taken_on_crossover':False
+            }}
         
-    if dt.now(time_zone).second==1:
+
+except:
+
+    real_info = { symbol_list[0]:{
+        'trade_flag':0,
+        'buy_price':0,
+        'quantity':0,
+        'pnl':0,        
+        'condition':False,
+        'wait_until':None,
+        'high':0,
+        'low':0,
+        'range':0,
+        "targets":{},
+        'crossover_active':False,
+        'trade_taken_on_crossover':False
+}}
+
+
+def check_active_position(ticker):
+    """Check if there's an active position for the given ticker"""
+    try:
+        positions = fyers.positions()
+        for pos in positions.get('netPositions', []):
+            if pos.get('symbol') == f"{fyers_initials}{ticker}" and pos.get('quantity', 0) != 0:
+                return True
+        return False
+    except Exception as e:
+        logging.error(f"Error checking active position: {e}")
+        return False
+    
+def target_helper(range, buy_price, take_type, v):
+    if take_type == 'FIXED':
+        return buy_price + v
+    elif take_type == 'PERCENTAGE':
+        return buy_price + (buy_price * v / 100)
+    elif take_type == 'RANGE':
+        return buy_price + (range * v)
+    else:
+        raise ValueError("Invalid take_type. Must be 'FIXED', 'PERCENTAGE', or 'RANGE'.")
+
+def get_targets(range,buy_price):
+    if T1=='RANGE':
+        if range<threshold:
+            t1=buy_price+(range*v1)
+        elif range>=threshold:
+            t1=buy_price+5
+    else:
+        t1=target_helper(range, buy_price, T1, v1)
+
+
+    if T2=='RANGE':
+        if range<threshold:
+            t2=buy_price+(range*v2)
+        elif range>=threshold:
+            t2=buy_price+(0.5*range)
+    else:
+        t2=target_helper(range, buy_price, T2, v2)
+    t3=target_helper(range, buy_price, T3, v3)
+    t4=target_helper(range, buy_price, T4, v4)
+    t5=target_helper(range, buy_price, T5, v5)
+    return t1,t2,t3,t4,t5
+
+def sell_partial_quantity(ticker, quantity_to_sell):
+    """Sell a partial quantity of the position for the given ticker"""
+    try:
+        data = {
+            "symbol": f"{fyers_initials}{ticker}",
+            "qty": quantity_to_sell*lot_size,
+            "type": 2,  # Market order
+            "side": -1,  # Sell
+            "productType": "INTRADAY",
+            "limitPrice": 0,
+            "stopPrice": 0,
+            "validity": "DAY",
+            "disclosedQty": 0,
+            "offlineOrder": False,
+            "orderTag": f"partial_exit_{quantity_to_sell}",
+            "isSliceOrder": False
+        }
+        response = fyers.place_order(data=data)
+        logging.info(f'Partial sell order response: {response}')
+    except Exception as e:
+        logging.error(f'Error placing partial sell order: {e}')
+
+trade_flag=0
+first=1
+last_high=0
+
+def main_strategy_second():
+    global trade_flag,first,last_high,real_info
+    global df_5,df_15,df_60,index_15
+    current_time=dt.now(time_zone)
+        
+    if (current_time.second==1 and current_time.minute % 5 == 0) or first==1:
+        first=0
         # Fetch OHLC data for all symbols
         for symbol in symbol_list:
             symbol_fyers = fyers_initials + symbol
-            print(f"\n--- Fetching data for {symbol} ---")
+            logging.info(f"\n--- Fetching data for {symbol} ---")
             df_5=fetchOHLC(symbol_fyers,candle_1,10)
             df_5['rsi']=rsi(df_5['close'], length=rsi_1)
             df_5['rsi_smooth']=rsi_ma(df_5['rsi'])
@@ -221,12 +378,14 @@ def main_strategy_second():
             df_15=fetchOHLC(symbol_fyers,candle_2,10)
             df_15['rsi']=rsi(df_15['close'], length=rsi_2)
             df_15['rsi_smooth']=rsi_ma(df_15['rsi'])
+            df_15['rsi_flag'] = (df_15['rsi'] > df_15['rsi_smooth']).astype(bool)
             df_60=fetchOHLC(symbol_fyers,candle_3,10)
             df_60['rsi']=rsi(df_60['close'], length=rsi_3)
             df_60['rsi_smooth']=rsi_ma(df_60['rsi'])
-            print(df_5.tail())
-            print(df_15.tail())
-            print(df_60.tail())
+            df_60['rsi_flag'] = (df_60['rsi'] > df_60['rsi_smooth']).astype(bool)
+            print(f"df_5 tail:\n{df_5.tail()}")
+            print(f"df_15 tail:\n{df_15.tail()}")
+            print(f"df_60 tail:\n{df_60.tail()}")
         #underlying index data
         index_5=fetchOHLC(fyers_underlying_index,candle_1,10)
         index_5['rsi']=rsi(index_5['close'], length=rsi_1)
@@ -235,39 +394,149 @@ def main_strategy_second():
         index_15=fetchOHLC(fyers_underlying_index,candle_2,10)
         index_15['rsi']=rsi(index_15['close'], length=rsi_2)
         index_15['rsi_smooth']=rsi_ma(index_15['rsi'])
+        index_15['rsi_flag'] = (index_15['rsi'] > index_15['rsi_smooth']).astype(bool)
         index_60=fetchOHLC(fyers_underlying_index,candle_3,10)
         index_60['rsi']=rsi(index_60['close'], length=rsi_3)
         index_60['rsi_smooth']=rsi_ma(index_60['rsi'])
-        print(index_5.tail())
-        print(index_15.tail())
-        print(index_60.tail())
+        index_60['rsi_flag'] = (index_60['rsi'] > index_60['rsi_smooth']).astype(bool)  
+        # logging.info(f"index_5 tail:\n{index_5.tail()}")
+        # logging.info(f"index_15 tail:\n{index_15.tail()}")
+        # logging.info(f"index_60 tail:\n{index_60.tail()}")
 
-
-    # if dt.now(time_zone).second in range(0,60,10):
-    #     for symbol in symbol_list:
-    #         if symbol in final_data and final_data[symbol]:
-    #             # Convert epoch timestamp to string format
-    #             if isinstance(final_data[symbol].get('timestamp'), (int, float)):
-    #                 timestamp_str = dt.from_timestamp(final_data[symbol]['timestamp'], tz=time_zone).strftime('%Y-%m-%d %H:%M:%S')
-    #             else:
-    #                 timestamp_str = str(final_data[symbol].get('timestamp', 'N/A'))
-    #             print(f'{symbol} - LTP: {final_data[symbol].get("ltp", "N/A")}, Exchange Time: {timestamp_str}')
-                
-        
-    #     print('system   time:',dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
-
+    
 
     ticker=symbol_list[0]
     ticker_price=final_data[ticker].get('ltp', 'N/A')
-    print(dt.now(time_zone).strftime('%Y-%m-%d %H:%M:%S'), ticker,ticker_price)
+    print(dt.now(time_zone),ticker,ticker_price)
+    trade_flag=real_info[ticker]['trade_flag']
 
+    # Validate dataframes are initialized and have enough data
+    if df_5 is None or len(df_5) < 2:
+        logging.info("df_5 not initialized or insufficient data")
+        return
 
-    #entry condition
-    if trade_flag == 0 and df_5['rsi_flag'].iloc[-2] :
-        print('entry condition met')
-        current_high=df_5['high'].iloc[-2]
-        trade_flag=1
+    # Detect RSI crossover (fresh crossover = RSI crosses above RSI_MA)
+    rsi_above_ma_prev = df_5['rsi'].iloc[-3] > df_5['rsi_smooth'].iloc[-3] if len(df_5) >= 3 else False
+    rsi_above_ma_current = df_5['rsi'].iloc[-2] > df_5['rsi_smooth'].iloc[-2]
     
+    # Fresh crossover detected: RSI crosses from below to above MA
+    if not rsi_above_ma_prev and rsi_above_ma_current:
+        logging.info('Fresh RSI crossover detected!')
+        real_info[ticker]['crossover_active'] = True
+        real_info[ticker]['trade_taken_on_crossover'] = False
+    
+    # Crossover ended: RSI crosses back below MA
+    elif rsi_above_ma_prev and not rsi_above_ma_current:
+        logging.info('RSI crossed back below MA - resetting crossover flags')
+        real_info[ticker]['crossover_active'] = False
+        real_info[ticker]['trade_taken_on_crossover'] = False
+    
+    # Detect ongoing crossover (for startup/restart scenarios)
+    # If crossover_active is False but RSI is currently above MA, activate it
+    elif not real_info[ticker]['crossover_active'] and rsi_above_ma_current:
+        logging.info('Ongoing RSI crossover detected (startup/restart) - activating crossover flag')
+        print("Ongoing RSI crossover detected (startup/restart) - activating crossover flag")
+        real_info[ticker]['crossover_active'] = True
+        real_info[ticker]['trade_taken_on_crossover'] = False
+
+    #entry condition - only trade on fresh crossover
+    if (trade_flag == 0 and 
+        real_info[ticker]['crossover_active'] and 
+        not real_info[ticker]['trade_taken_on_crossover'] and 
+        df_5['rsi_flag'].iloc[-2] and 
+        ticker_price != 'N/A'):
+        
+        current_high=df_5['high'].iloc[-2]
+        current_low=df_5['low'].iloc[-2]
+        print('rsi is above ma',current_high,ticker_price)
+        # logging.info(f'Entry condition met - current_high: {current_high}, current_low: {current_low}')
+        
+        if ticker_price>=current_high  and  ((df_15['rsi_flag'].iloc[-1]==True and min_15_condition) or (df_60['rsi_flag'].iloc[-1]==True and min_60_condition) or (index_15['rsi_flag'].iloc[-1]==True and index_15_condition)):
+            logging.info(f'Placing buy order - ticker_price: {ticker_price} >= current_high: {current_high}')
+
+          
+            data = {
+                "symbol":fyers_initials+ticker,
+                "qty":lot_size*quantity_position,
+                "type":2,
+                "side":1,
+                "productType":"INTRADAY",
+                "limitPrice":0,
+                "stopPrice":0,
+                "validity":"DAY",
+                "disclosedQty":0,
+                "offlineOrder":False,
+                "orderTag":f"{int(current_high)}d{int(current_low)}",
+                "isSliceOrder":False
+            }
+            try:
+                response = fyers.place_order(data=data)
+                logging.info(f'Order response: {response}')
+                trade_flag=1
+                real_info[ticker]['trade_flag']=1
+                real_info[ticker]['buy_price']=ticker_price
+                real_info[ticker]['high']=current_high
+                real_info[ticker]['low']=current_low
+                real_info[ticker]['range']=current_high - current_low
+                real_info[ticker]['trade_taken_on_crossover']=True  # Mark that trade was taken on this crossover
+                t1,t2,t3,t4,t5=get_targets(real_info[ticker]['range'],real_info[ticker]['buy_price'])
+                real_info[ticker]['targets']={'t1':t1,'t2':t2,'t3':t3,'t4':t4,'t5':t5}
+                logging.info(f'Trade taken on crossover - Targets: t1={t1}, t2={t2}, t3={t3}, t4={t4}, t5={t5}')
+                logging.info(f'Crossover flag locked until RSI crosses back below MA')
+            except Exception as e:
+                logging.error(f'Error placing buy order: {e}')
+
+    #already open position
+    elif trade_flag==1 and ticker_price != 'N/A':
+        print(f"Trade already placed - ticker_price: {ticker_price}, t2: {real_info[ticker]['targets'].get('t2')}, low: {real_info[ticker]['low']}")
+        if trade_flag == 1 and check_active_position(ticker):
+            print(f"Active position detected for {ticker} - current price: {ticker_price}")
+        else:
+            logging.info(f"No active position detected for {ticker} - resetting trade flag")
+            trade_flag = 0
+            real_info[ticker].update({
+                'trade_flag': 0,
+                'buy_price': 0,
+                'quantity': 0,'high': 0,'low': 0,'range': 0,'targets':{}})
+            return 0
+
+        if ticker_price>real_info[ticker]['targets'].get('t3'):
+            logging.info(f'Target t3 reached - consider partial profit booking at {ticker_price}')
+            # Implement partial profit booking logic here (e.g., exit half position)
+            partial_quantity = quantity_position * v3_pos  # Calculate quantity to sell based on v3_pos
+            sell_partial_quantity(ticker, int(partial_quantity))
+
+        elif (ticker_price>real_info[ticker]['targets'].get('t2')) :
+            #close position
+            logging.info(f'Target t2 reached - closing partial at {ticker_price}')
+            partial_quantity = quantity_position * v2_pos  # Calculate quantity to sell based on v2_pos
+            sell_partial_quantity(ticker, int(partial_quantity))
+
+        if ticker_price<(real_info[ticker]['low']):
+            logging.info(f"Price {ticker_price} went below low {real_info[ticker]['low']} - closing position")
+            try:
+                fyers.exit_positions({'id':fyers_initials+ticker+"-INTRADAY"})
+                real_info = { symbol_list[0]:{
+                'trade_flag':0,
+                'buy_price':0,
+                'quantity':0,
+                'pnl':0,        
+                'condition':False,
+                'wait_until':None,
+                'high':0,
+                'low':0,
+                'range':0,
+                "targets":{},
+                'crossover_active':real_info[ticker]['crossover_active'],
+                'trade_taken_on_crossover':True  # Prevent re-entry until fresh crossover
+                }}
+                print('position closed at stop loss')
+            except Exception as e:
+                logging.error(f'Error exiting position at stop loss: {e}')  
+                print('position close failed at stop loss')
+
+    store(real_info,account_type)
+
 
 
  

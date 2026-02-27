@@ -1,61 +1,65 @@
-# Replace these values with your actual API credentials
+
+
+# ==================== CONFIGURATION VARIABLES ====================
+# API Credentials
 client_id = 'DF26CD57LX-100'
 secret_key = '5SS5D9X5TR'
 redirect_uri = 'https://fessorpro.com/'
 response_type = "code"  
 state = "sample_state"
 
-totp_key='6ITMUZAD7POI44YBWQFEGODOQAUAF3ZH'
-import pyotp as tp
-t=tp.TOTP(totp_key).now()
-print(t)
-secondary_data=True
-if secondary_data:
-    api_key = 'z59mkhj6yg8b6c81'
-    access_token_kite = 'lBFANONliGNFlnpESDBkcudfAAdOcFeU'
-threshold=12
-take_type={'FIXED':1,'PERCENTAGE':2,'RANGE':3}
+secondary_data = True
+kite_key = 'z59mkhj6yg8b6c81'
+kite_secret = 'vd00dbutmiskmpelwfqf4o51s074d72h' 
+
+# Trading Parameters
+threshold = 12
+take_type = {'FIXED': 1, 'PERCENTAGE': 2, 'RANGE': 3, 'ATR': 4}
 T1 = 'RANGE'; v1 = 0.3
-T2 = 'RANGE'; v2 = 1    ;v2_pos=0.5
-T3 = 'RANGE'; v3 = 1.5  ;v3_pos=0.5
-T4 = 'RANGE'; v4 = 2    ;v4_pos=0
-T5 = 'RANGE'; v5 = 3    ;v5_pos=0
+T2 = 'RANGE'; v2 = 1; v2_pos = 0.5
+T3 = 'RANGE'; v3 = 1.5; v3_pos = 0.5
+T4 = 'RANGE'; v4 = 2; v4_pos = 0
+T5 = 'RANGE'; v5 = 3; v5_pos = 0
+T6 = 'RANGE'; v6 = 4; v6_pos = 0
 
-capital=12000
-lot_size=65
-quantity_position=2
-candle_1='5'
-candle_2='15'
-candle_3='60'
-min_15_condition=True
-min_60_condition=True
-index_15_condition=True
-rsi_1=14;rsi_smooth_1=14
-rsi_2=14;rsi_smooth_2=14
-rsi_3=14;rsi_smooth_3=14
-atr_length=14
-strategy_name='nikita'
-account_type='LIVE'
-time_zone="Asia/Kolkata"
-start_hour,start_min=9,20
-end_hour,end_min=15,10
+wait_buffer = 120
+lot_size = {}
+quantity_position = 2
+candle_1 = '5'
+candle_2 = '15'
+candle_3 = '60'
+capital = 100_000
+min_15_condition = True
+min_60_condition = True
+index_15_condition = True
 
-access_token_fyers = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcG5vN3lVVk94STZZbGQtTVU1UGpsMXQ5MzZqazdsekVSTTUzV2g4Z05jSTd1LVpNaEJlU2dWSHFVZU91dDVxcHhvUGlyNGZ4bmt4NVRrcGdNVHRBV2NyeXNHQWY1OTdEWkJiVEF5ODBNMU5wWEJxWT0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiIxYjIxOGJhNWQ4N2ZjNWU5NzQyMDJkYzFkNmRiYzVmYzZkZjdkNGYxZDRjMTdiNTFhYzE2ZDI4YSIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiWFM0NTQ3NCIsImFwcFR5cGUiOjEwMCwiZXhwIjoxNzcyMDY1ODAwLCJpYXQiOjE3NzE5OTg5NjIsImlzcyI6ImFwaS5meWVycy5pbiIsIm5iZiI6MTc3MTk5ODk2Miwic3ViIjoiYWNjZXNzX3Rva2VuIn0.-mtMKhSxJx6WvW7r5W6L7F5_lf8qDxKEjRtzNIye4iM"
+# Technical Indicators
+rsi_1 = 14; rsi_smooth_1 = 14
+rsi_2 = 14; rsi_smooth_2 = 14
+rsi_3 = 14; rsi_smooth_3 = 14
+atr_length = 14
+
+# Strategy Settings
+strategy_name = 'nikita'
+account_type = 'LIVE'
+time_zone = "Asia/Kolkata"
+start_hour, start_min = 9, 30
+end_hour, end_min = 15, 5
+
+# Symbol and Exchange Configuration
+index_name = 'NIFTY50'
+exchange = 'NSE'
+type2 = 'INDEX'
+fyers_underlying_index = f"{exchange}:{index_name}-{type2}"
+kite_index = {'NIFTY50': 256265, 'NIFTYBANK': 260105}
+kite_underlying_index_token = kite_index.get(index_name)
+symbol_list = ['NIFTY2630225550CE', 'NIFTY2630225350PE']
+fyers_initials = 'NSE:'
+exchange_kite = 'NFO'
 
 
-index_name='NIFTY50'
-exchange='NSE'
-type2='INDEX'
-fyers_underlying_index=f"{exchange}:{index_name}-{type2}"
-kite_index={'NIFTY50':256265,'NIFTYBANK':260105}
-kite_underlying_index_token=kite_index.get(index_name)
-symbol_list=['NIFTY2630225650CE']
-fyers_initials='NSE:'
-exchange_kite='NFO'    
-global final_data
-final_data={symbol:{} for symbol in symbol_list}
-final_data[index_name]={}
 
+# ==================== IMPORTS AND SSL/SIGNAL PATCHES ====================
 # CRITICAL: Patch signal module to prevent errors in non-main threads
 # This must be done before importing fyers_apiv3 (which uses Twisted)
 import signal
@@ -83,39 +87,47 @@ def safe_set_wakeup_fd(fd):
 signal.signal = safe_signal
 signal.set_wakeup_fd = safe_set_wakeup_fd
 
-# Import the required module from the fyers_apiv3 package
-from fyers_apiv3 import fyersModel
-from fyers_apiv3.FyersWebsocket import data_ws
-import pandas as pd
-import pendulum as dt
-import asyncio
-import pickle
-import time
-import webbrowser
+# Standard library imports
 import os
 import sys
+import webbrowser
+import pickle
+import time
+import asyncio
+import logging
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
+
+# Third-party imports
+import pandas as pd
+import pendulum as dt
 import numpy as np
 import certifi
+import requests
+
+# Trading API imports
+from fyers_apiv3 import fyersModel
+from fyers_apiv3.FyersWebsocket import data_ws
 from kiteconnect import KiteTicker, KiteConnect
-from datetime import datetime
-import logging
-from concurrent.futures import ThreadPoolExecutor
 
-#disable fyersApi and Fyers Request logs
-import logging
-
-#disable logging for fyersApi
+# Disable logging for various modules
 fyersModel.logging.getLogger().setLevel(logging.CRITICAL)
-
-# Disable HTTP connection logs from requests and urllib3
 logging.getLogger("requests").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
 logging.getLogger("requests.packages.urllib3").setLevel(logging.CRITICAL)
 logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(logging.CRITICAL)
 
+# For Windows SSL error
+os.environ['SSL_CERT_FILE'] = certifi.where()
 
-# Configure logging with custom formatter
+# Global data storage
+global final_data
+final_data = {symbol: {} for symbol in symbol_list}
+final_data[index_name] = {}
+
+# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s || %(message)s",
@@ -125,50 +137,251 @@ logging.basicConfig(
     ]
 )
 
-
-
-# For Windows SSL error
-os.environ['SSL_CERT_FILE'] = certifi.where()
-
-
-# Get the current time
-current_time=dt.now(time_zone)
-start_time=dt.datetime(current_time.year,current_time.month,current_time.day,start_hour,start_min,tz=time_zone)
-end_time=dt.datetime(current_time.year,current_time.month,current_time.day,end_hour,end_min,tz=time_zone)
+# ==================== TIME SETUP ====================
+# Get current time and trading hours
+current_time = dt.now(time_zone)
+start_time = dt.datetime(current_time.year, current_time.month, current_time.day, start_hour, start_min, tz=time_zone)
+end_time = dt.datetime(current_time.year, current_time.month, current_time.day, end_hour, end_min, tz=time_zone)
 print('start time:', start_time)
 print('end time:', end_time)
 
+# ==================== AUTHENTICATION SECTION ====================
+def authenticate_fyers():
+    """Handle Fyers authentication and token management"""
+    # Check if access.txt exists, then read the file and get the access token
+    if os.path.exists(f'fyers-access-{dt.now(time_zone).date()}.txt'):
+        print('access token exists')
+        with open(f'fyers-access-{dt.now(time_zone).date()}.txt', 'r') as f:
+            access_token_fyers = f.read()
+    else:
+        # Define grant type for the session
+        try:
+            # Create a session model with the provided credentials
+            session = fyersModel.SessionModel(
+                client_id=client_id,
+                secret_key=secret_key,
+                redirect_uri=redirect_uri,
+                response_type=response_type
+            )
+
+            # Generate the auth code using the session model
+            response = session.generate_authcode()
+
+            # Print the auth code received in the response
+            print(response)
+
+            # Open the auth code URL in a new browser window
+            webbrowser.open(response, new=1)
+            newurl = input("Enter the url: ")
+            auth_code = newurl[newurl.index('auth_code=')+10:newurl.index('&state')]
+
+            # Define grant type for the session
+            grant_type = "authorization_code"
+            session = fyersModel.SessionModel(
+                client_id=client_id,
+                secret_key=secret_key,
+                redirect_uri=redirect_uri,
+                response_type=response_type,
+                grant_type=grant_type
+            )
+
+            # Set the authorization code in the session object
+            session.set_token(auth_code)
+
+            # Generate the access token using the authorization code
+            response = session.generate_token()
+
+            # Save the access token to access.txt
+            access_token_fyers = response["access_token"]
+            with open(f'fyers-access-{dt.now(time_zone).date()}.txt', 'w') as k:
+                k.write(access_token_fyers)
+        except Exception as e:
+            # Print the exception and response for debugging
+            print(e, response)
+            print('unable to get access token')
+            sys.exit()
+    
+    return access_token_fyers
+
+def authenticate_kite():
+    """Handle Kite authentication and token management"""
+    if not secondary_data:
+        return None
+        
+    api_key = kite_key
+    api_secret = kite_secret
+
+    # Check if Kite access token file exists
+    if os.path.exists(f'kite_access-{dt.now(time_zone).date()}.txt'):
+        print('Kite access token exists')
+        with open(f'kite_access-{dt.now(time_zone).date()}.txt', 'r') as f:
+            access_token_kite = f.read()
+    else:
+        # Generate Kite access token through OAuth flow
+        try:
+            kite = KiteConnect(api_key=api_key)
+            response = kite.login_url()
+            print("Kite Login URL:", response)
+            
+            # Open the login URL in browser
+            webbrowser.open(response, new=1)
+            
+            newurl = input("Enter the redirect URL: ")
+            print("Redirect URL:", newurl)
+            
+            # Extract request_token more dynamically to handle different URL parameter orders
+            if 'request_token=' not in newurl:
+                raise ValueError("request_token not found in the URL")
+            
+            start_index = newurl.index('request_token=') + 14
+            end_index = newurl.find('&', start_index)
+            
+            if end_index == -1:  # If no '&' found after request_token, take until end
+                request_token = newurl[start_index:]
+            else:
+                request_token = newurl[start_index:end_index]
+            
+            # Additional validation
+            if not request_token or request_token.isspace():
+                raise ValueError("Empty or invalid request_token extracted")
+                
+            print("Request Token:", request_token)
+            
+            # Generate session with request token
+            data = kite.generate_session(request_token, api_secret=api_secret)
+            print("Access Token:", data['access_token'])
+            
+            # Save the access token
+            access_token_kite = data["access_token"]
+            with open(f'kite_access-{dt.now(time_zone).date()}.txt', 'w') as k:
+                k.write(access_token_kite)
+                
+        except Exception as e:
+            print("Error generating Kite access token:", e)
+            print("Unable to get Kite access token")
+            sys.exit()
+    
+    return access_token_kite
+
+# Authenticate and get tokens
+access_token_fyers = authenticate_fyers()
+print('access token fyers:', access_token_fyers)
+
+access_token_kite = authenticate_kite()
+if secondary_data:
+    print('Kite access token:', access_token_kite)
+else:
+    print('Secondary data (Kite) disabled')
 
 
-
+# ==================== API CLIENT INITIALIZATION ====================
 # Initialize FyersModel instances for synchronous and asynchronous operations
 fyers = fyersModel.FyersModel(client_id=client_id, is_async=False, token=access_token_fyers, log_path=None)
 fyers_asysc = fyersModel.FyersModel(client_id=client_id, is_async=True, token=access_token_fyers, log_path=None)
 
-available_cash= fyers.funds()
+# Get available cash and set capital
+available_cash = fyers.funds()
 print('available cash:', available_cash.get('fund_limit')[-1].get('equityAmount'))
+if capital == 0:
+    capital = available_cash.get('fund_limit')[-1].get('equityAmount')
+else:
+    capital = capital
 
+print('capital for trading:', capital)
 
+# ==================== UTILITY FUNCTIONS ====================
+def get_lot_size_for_symbols(symbol_list, fyers_initials):
+    """Get lot sizes for given symbols from Fyers symbol master files"""
+    try:
+        urls = [
+            "https://public.fyers.in/sym_details/NSE_CM.csv",
+            "https://public.fyers.in/sym_details/NSE_FO.csv",
+            "https://public.fyers.in/sym_details/MCX_COM.csv",
+        ]
 
-def fetchOHLC(ticker,interval,duration):
+        column_names = [
+            "Fytoken", "Symbol Details", "Exchange Instrument Type", "Minimum Lot Size",
+            "Tick Size", "ISIN", "Trading Session", "Last Update Date", "Expiry Date",
+            "Symbol Ticker", "Exchange", "Segment", "Scrip Code", "Underlying Symbol",
+            "Underlying Scrip Code", "Strike Price", "Option Type", "Underlying FyToken",
+            "Reserved Column 1", "Reserved Column 2", "Reserved Column 3",
+        ]
+
+        frames = []
+        for url in urls:
+            try:
+                r = requests.get(url, timeout=30, verify=certifi.where())
+                r.raise_for_status()
+            except requests.exceptions.SSLError:
+                r = requests.get(url, timeout=30, verify=False)
+                r.raise_for_status()
+            frames.append(pd.read_csv(StringIO(r.text), header=None, names=column_names))
+
+        combined_df = pd.concat(frames, ignore_index=True)
+        symbol_details = combined_df["Symbol Details"].astype(str)
+        symbol_ticker = combined_df["Symbol Ticker"].astype(str)
+
+        final_lot_size = {}
+        for symbol in symbol_list:
+            symbol_with_prefix = f"{fyers_initials}{symbol}"
+
+            match = combined_df[symbol_details.eq(symbol_with_prefix)]
+            if match.empty:
+                match = combined_df[symbol_details.eq(symbol)]
+            if match.empty:
+                match = combined_df[symbol_ticker.eq(symbol_with_prefix)]
+            if match.empty:
+                match = combined_df[symbol_ticker.str.contains(symbol, na=False)]
+
+            if match.empty:
+                raise LookupError(f"Lot size not found for symbol: {symbol}")
+
+            size = match["Minimum Lot Size"].iloc[0]
+            if pd.isna(size):
+                raise ValueError(f"Invalid lot size for symbol: {symbol}")
+
+            final_lot_size[symbol] = int(size)
+
+        return final_lot_size
+
+    except Exception as e:
+        raise SystemExit(f"Execution stopped: {e}")
+
+def fetchOHLC(ticker, interval, duration):
+    """Extract historical data and output as DataFrame"""
     from datetime import date, timedelta
-    """extracts historical data and outputs in the form of dataframe"""
     instrument = ticker
-    data = {"symbol":instrument,"resolution":interval,"date_format":"1","range_from":date.today()-timedelta(duration),"range_to":date.today(),"cont_flag":"1",'oi_flag':"1"}
-    sdata=fyers.history(data)
-    # print(sdata)
-    sdata=pd.DataFrame(sdata['candles'])
+    data = {"symbol": instrument, "resolution": interval, "date_format": "1", 
+            "range_from": date.today()-timedelta(duration), "range_to": date.today(), 
+            "cont_flag": "1", 'oi_flag': "1"}
+    sdata = fyers.history(data)
+    sdata = pd.DataFrame(sdata['candles'])
     # Check if 'oi' column exists (7 columns)
     if sdata.shape[1] == 7:
-        sdata.columns=['date','open','high','low','close','volume','oi']
+        sdata.columns = ['date', 'open', 'high', 'low', 'close', 'volume', 'oi']
     else:
-        sdata.columns=['date','open','high','low','close','volume']
-    sdata['date']=pd.to_datetime(sdata['date'], unit='s')
-    sdata.date=(sdata.date.dt.tz_localize('UTC').dt.tz_convert(time_zone))
+        sdata.columns = ['date', 'open', 'high', 'low', 'close', 'volume']
+    sdata['date'] = pd.to_datetime(sdata['date'], unit='s')
+    sdata.date = (sdata.date.dt.tz_localize('UTC').dt.tz_convert(time_zone))
     sdata['date'] = sdata['date'].dt.tz_localize(None)
-    sdata=sdata.set_index('date')
+    sdata = sdata.set_index('date')
     return sdata
 
+def store(data, account_type):
+    """Store TradeInfo objects as dictionaries for pickle serialization"""
+    save_data = {symbol: trade_info.to_dict() for symbol, trade_info in data.items()}
+    pickle.dump(save_data, open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'wb'))
+
+def load(account_type):
+    """Load trade data from pickle file"""
+    return pickle.load(open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'rb'))
+
+# Get lot sizes for all symbols
+get_lot_size_for_symbols(symbol_list, fyers_initials)
+lot_size = get_lot_size_for_symbols(symbol_list, fyers_initials)
+print('Lot sizes for symbols:', lot_size)
+
+# ==================== TECHNICAL INDICATORS ====================
 def rma(series, length):
     """Rolling Mean Average (EMA with alpha=1/length)"""
     return series.ewm(alpha=1/length, min_periods=length, adjust=False).mean()
@@ -235,59 +448,129 @@ def atr(df, length=14):
     atr = true_range.rolling(window=length, min_periods=length).mean()
     return atr
 
-global df_5,df_15,df_60
+# ==================== TRADING CLASSES AND LOGIC ====================
+# Global dataframes for strategy
+global symbol_dataframes, index_5, index_15, index_60
 
-# Initialize dataframes as None
-df_5 = None
-df_15 = None
-df_60 = None
+# Initialize dataframes dictionary for each symbol
+symbol_dataframes = {symbol: {'df_5': None, 'df_15': None, 'df_60': None} for symbol in symbol_list}
+index_5 = None
+index_15 = None
+index_60 = None
 
-# Function to store data using pickle
-def store(data, account_type):
-    pickle.dump(data, open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'wb'))
+class TradeInfo:
+    """Manage trading information for each symbol"""
+    def __init__(self):
+        self.trade_flag = 0
+        self.buy_price = 0
+        self.quantity = 0
+        self.pnl = 0
+        self.condition = False
+        self.wait_until = None
+        self.wait_until_flag = False
+        self.high = 0
+        self.low = 0
+        self.range = 0
+        self.targets = {}
+        self.crossover_active = False
+        self.trade_taken_on_crossover = False
+        self.order_time = None
+        self.t1_executed = False
+        self.t2_executed = False
+        self.t3_executed = False
+        self.t4_executed = False
+        self.t5_executed = False
+        self.t6_executed = False
+    
+    def reset(self, keep_crossover_state=False):
+        """Reset trade info, optionally keeping crossover state"""
+        self.trade_flag = 0
+        self.buy_price = 0
+        self.quantity = 0
+        self.pnl = 0
+        self.condition = False
+        self.wait_until = None
+        self.wait_until_flag = False
+        self.high = 0
+        self.low = 0
+        self.range = 0
+        self.targets = {}
+        if not keep_crossover_state:
+            self.crossover_active = False
+        self.trade_taken_on_crossover = True  # Prevent immediate re-entry
+        self.order_time = None
+        self.t1_executed = False
+        self.t2_executed = False
+        self.t3_executed = False
+    
+    def to_dict(self):
+        """Convert to dictionary for pickle serialization"""
+        return {
+            'trade_flag': self.trade_flag,
+            'buy_price': self.buy_price,
+            'quantity': self.quantity,
+            'pnl': self.pnl,
+            'condition': self.condition,
+            'wait_until': self.wait_until,
+            'wait_until_flag': self.wait_until_flag,
+            'high': self.high,
+            'low': self.low,
+            'range': self.range,
+            'targets': self.targets,
+            'crossover_active': self.crossover_active,
+            'trade_taken_on_crossover': self.trade_taken_on_crossover,
+            'order_time': self.order_time,
+            't1_executed': self.t1_executed,
+            't2_executed': self.t2_executed,
+            't3_executed': self.t3_executed
+        }
+    
+    @classmethod
+    def from_dict(cls, data):
+        """Create TradeInfo from dictionary (for loading from pickle)"""
+        trade_info = cls()
+        trade_info.trade_flag = data.get('trade_flag', 0)
+        trade_info.buy_price = data.get('buy_price', 0)
+        trade_info.quantity = data.get('quantity', 0)
+        trade_info.pnl = data.get('pnl', 0)
+        trade_info.condition = data.get('condition', False)
+        trade_info.wait_until = data.get('wait_until', None)
+        trade_info.wait_until_flag = data.get('wait_until_flag', False)
+        trade_info.high = data.get('high', 0)
+        trade_info.low = data.get('low', 0)
+        trade_info.range = data.get('range', 0)
+        trade_info.targets = data.get('targets', {})
+        trade_info.crossover_active = data.get('crossover_active', False)
+        trade_info.trade_taken_on_crossover = data.get('trade_taken_on_crossover', False)
+        trade_info.order_time = data.get('order_time', None)
+        trade_info.t1_executed = data.get('t1_executed', False)
+        trade_info.t2_executed = data.get('t2_executed', False)
+        trade_info.t3_executed = data.get('t3_executed', False)
+        return trade_info
 
-# Function to load data using pickle
-def load(account_type):
-    return pickle.load(open(f'data-{dt.now(time_zone).date()}-{account_type}.pickle', 'rb'))
-
+# Initialize trade info for all symbols
 try:
-        real_info = load(account_type)
-        if real_info.get(symbol_list[0]) is None:
-            logging.info("No existing data found for symbol - initializing new real_info structure")
-            print("No existing data found for symbol - initializing new real_info structure")
-            real_info = { symbol_list[0]:{
-                'trade_flag':0,
-                'buy_price':0,
-                'quantity':0,
-                'pnl':0,        
-                'condition':False,
-                'wait_until':None,
-                'high':0,
-                'low':0,
-                'range':0,
-                "targets":{},
-                'crossover_active':False,
-                'trade_taken_on_crossover':False
-            }}
-        
+    loaded_data = load(account_type)
+    real_info = {}
+    
+    # Convert loaded dictionary to TradeInfo objects
+    for symbol in symbol_list:
+        if symbol in loaded_data:
+            # Load from existing data (handles both dict and TradeInfo)
+            if isinstance(loaded_data[symbol], dict):
+                real_info[symbol] = TradeInfo.from_dict(loaded_data[symbol])
+                logging.info(f"Loaded existing trade info for {symbol}")
+            else:
+                real_info[symbol] = loaded_data[symbol]
+                logging.info(f"Loaded existing TradeInfo object for {symbol}")
+        else:
+            # Initialize new TradeInfo if symbol not found
+            logging.info(f"No existing data found for {symbol} - initializing new TradeInfo")
+            real_info[symbol] = TradeInfo()
 
 except:
-
-    real_info = { symbol_list[0]:{
-        'trade_flag':0,
-        'buy_price':0,
-        'quantity':0,
-        'pnl':0,        
-        'condition':False,
-        'wait_until':None,
-        'high':0,
-        'low':0,
-        'range':0,
-        "targets":{},
-        'crossover_active':False,
-        'trade_taken_on_crossover':False
-}}
-
+    logging.info("No saved data found or error loading - initializing new TradeInfo for all symbols")
+    real_info = {symbol: TradeInfo() for symbol in symbol_list}
 
 def check_active_position(ticker):
     """Check if there's an active position for the given ticker"""
@@ -300,8 +583,23 @@ def check_active_position(ticker):
     except Exception as e:
         logging.error(f"Error checking active position: {e}")
         return False
-    
+
+def check_active_order(ticker):
+    """Check if there's an active order for the given ticker"""
+    try:
+        orders = fyers.orderbook()
+        for order in orders.get('orderBook', []):
+            if (order.get('symbol') == f"{fyers_initials}{ticker}" and 
+                order.get('status') in [1, 2, 4, 5, 6]):  # 1=Pending, 2=Placed, 4=Transit, 5=Partially Filled, 6=Pending Modification
+                logging.info(f"Active order found: {order.get('id')} - Status: {order.get('status')}")
+                return True
+        return False
+    except Exception as e:
+        logging.error(f"Error checking active order: {e}")
+        return False
+
 def target_helper(range, buy_price, take_type, v):
+    """Calculate target price based on take type"""
     if take_type == 'FIXED':
         return buy_price + v
     elif take_type == 'PERCENTAGE':
@@ -311,34 +609,35 @@ def target_helper(range, buy_price, take_type, v):
     else:
         raise ValueError("Invalid take_type. Must be 'FIXED', 'PERCENTAGE', or 'RANGE'.")
 
-def get_targets(range,buy_price):
-    if T1=='RANGE':
-        if range<threshold:
-            t1=buy_price+(range*v1)
-        elif range>=threshold:
-            t1=buy_price+5
+def get_targets(range, buy_price):
+    """Calculate all target levels"""
+    if T1 == 'RANGE':
+        if range < threshold:
+            t1 = buy_price + (range * v1)
+        elif range >= threshold:
+            t1 = buy_price + 5
     else:
-        t1=target_helper(range, buy_price, T1, v1)
+        t1 = target_helper(range, buy_price, T1, v1)
 
-
-    if T2=='RANGE':
-        if range<threshold:
-            t2=buy_price+(range*v2)
-        elif range>=threshold:
-            t2=buy_price+(0.5*range)
+    if T2 == 'RANGE':
+        if range < threshold:
+            t2 = buy_price + (range * v2)
+        elif range >= threshold:
+            t2 = buy_price + (0.5 * range)
     else:
-        t2=target_helper(range, buy_price, T2, v2)
-    t3=target_helper(range, buy_price, T3, v3)
-    t4=target_helper(range, buy_price, T4, v4)
-    t5=target_helper(range, buy_price, T5, v5)
-    return t1,t2,t3,t4,t5
+        t2 = target_helper(range, buy_price, T2, v2)
+    
+    t3 = target_helper(range, buy_price, T3, v3)
+    t4 = target_helper(range, buy_price, T4, v4)
+    t5 = target_helper(range, buy_price, T5, v5)
+    return t1, t2, t3, t4, t5
 
 def sell_partial_quantity(ticker, quantity_to_sell):
     """Sell a partial quantity of the position for the given ticker"""
     try:
         data = {
             "symbol": f"{fyers_initials}{ticker}",
-            "qty": quantity_to_sell*lot_size,
+            "qty": int(quantity_to_sell * lot_size),
             "type": 2,  # Market order
             "side": -1,  # Sell
             "productType": "INTRADAY",
@@ -347,7 +646,7 @@ def sell_partial_quantity(ticker, quantity_to_sell):
             "validity": "DAY",
             "disclosedQty": 0,
             "offlineOrder": False,
-            "orderTag": f"partial_exit_{quantity_to_sell}",
+            "orderTag": f"partial_exit_{int(quantity_to_sell * lot_size)}",
             "isSliceOrder": False
         }
         response = fyers.place_order(data=data)
@@ -355,191 +654,189 @@ def sell_partial_quantity(ticker, quantity_to_sell):
     except Exception as e:
         logging.error(f'Error placing partial sell order: {e}')
 
-trade_flag=0
-first=1
-last_high=0
+# ==================== MAIN STRATEGY LOGIC ====================
+trade_flag = 0
+first = 1
+last_high = 0
 
 def main_strategy_second():
-    global trade_flag,first,last_high,real_info
-    global df_5,df_15,df_60,index_15
-    current_time=dt.now(time_zone)
+    """Main strategy logic that processes trading signals"""
+    global trade_flag, first, last_high, real_info
+    global symbol_dataframes, index_5, index_15, index_60
+    current_time = dt.now(time_zone)
         
-    if (current_time.second==1 and current_time.minute % 5 == 0) or first==1:
-        first=0
+    if (current_time.second == 1 and current_time.minute % 5 == 0) or first == 1:
+        first = 0
         # Fetch OHLC data for all symbols
         for symbol in symbol_list:
             symbol_fyers = fyers_initials + symbol
             logging.info(f"\n--- Fetching data for {symbol} ---")
-            df_5=fetchOHLC(symbol_fyers,candle_1,10)
-            df_5['rsi']=rsi(df_5['close'], length=rsi_1)
-            df_5['rsi_smooth']=rsi_ma(df_5['rsi'])
+            df_5 = fetchOHLC(symbol_fyers, candle_1, 10)
+            df_5['rsi'] = rsi(df_5['close'], length=rsi_1)
+            df_5['rsi_smooth'] = rsi_ma(df_5['rsi'])
             df_5['rsi_flag'] = (df_5['rsi'] > df_5['rsi_smooth']).astype(bool)
-            df_5.to_csv('5min.csv')
-            df_15=fetchOHLC(symbol_fyers,candle_2,10)
-            df_15['rsi']=rsi(df_15['close'], length=rsi_2)
-            df_15['rsi_smooth']=rsi_ma(df_15['rsi'])
+            df_15 = fetchOHLC(symbol_fyers, candle_2, 10)
+            df_15['rsi'] = rsi(df_15['close'], length=rsi_2)
+            df_15['rsi_smooth'] = rsi_ma(df_15['rsi'])
             df_15['rsi_flag'] = (df_15['rsi'] > df_15['rsi_smooth']).astype(bool)
-            df_60=fetchOHLC(symbol_fyers,candle_3,10)
-            df_60['rsi']=rsi(df_60['close'], length=rsi_3)
-            df_60['rsi_smooth']=rsi_ma(df_60['rsi'])
+            df_60 = fetchOHLC(symbol_fyers, candle_3, 10)
+            df_60['rsi'] = rsi(df_60['close'], length=rsi_3)
+            df_60['rsi_smooth'] = rsi_ma(df_60['rsi'])
             df_60['rsi_flag'] = (df_60['rsi'] > df_60['rsi_smooth']).astype(bool)
-            print(f"df_5 tail:\n{df_5.tail()}")
-            print(f"df_15 tail:\n{df_15.tail()}")
-            print(f"df_60 tail:\n{df_60.tail()}")
-        #underlying index data
-        index_5=fetchOHLC(fyers_underlying_index,candle_1,10)
-        index_5['rsi']=rsi(index_5['close'], length=rsi_1)
-        index_5['rsi_smooth']=rsi_ma(index_5['rsi'])
-        index_5['rsi_flag']=index_5['rsi']>index_5['rsi_smooth']
-        index_15=fetchOHLC(fyers_underlying_index,candle_2,10)
-        index_15['rsi']=rsi(index_15['close'], length=rsi_2)
-        index_15['rsi_smooth']=rsi_ma(index_15['rsi'])
+            
+            # Store dataframes per symbol
+            symbol_dataframes[symbol] = {'df_5': df_5, 'df_15': df_15, 'df_60': df_60}
+            
+            print(f"\n{symbol} - df_5 tail:\n{df_5.tail()}")
+            print(f"{symbol} - df_15 tail:\n{df_15.tail()}")
+            print(f"{symbol} - df_60 tail:\n{df_60.tail()}")
+
+        index_15 = fetchOHLC(fyers_underlying_index, candle_2, 10)
+        index_15['rsi'] = rsi(index_15['close'], length=rsi_2)
+        index_15['rsi_smooth'] = rsi_ma(index_15['rsi'])
         index_15['rsi_flag'] = (index_15['rsi'] > index_15['rsi_smooth']).astype(bool)
-        index_60=fetchOHLC(fyers_underlying_index,candle_3,10)
-        index_60['rsi']=rsi(index_60['close'], length=rsi_3)
-        index_60['rsi_smooth']=rsi_ma(index_60['rsi'])
-        index_60['rsi_flag'] = (index_60['rsi'] > index_60['rsi_smooth']).astype(bool)  
-        # logging.info(f"index_5 tail:\n{index_5.tail()}")
-        # logging.info(f"index_15 tail:\n{index_15.tail()}")
-        # logging.info(f"index_60 tail:\n{index_60.tail()}")
 
-    
 
-    ticker=symbol_list[0]
-    ticker_price=final_data[ticker].get('ltp', 'N/A')
-    print(dt.now(time_zone),ticker,ticker_price)
-    trade_flag=real_info[ticker]['trade_flag']
+    # Process trading logic for each symbol independently
+    for ticker in symbol_list:
+        ticker_price = final_data.get(ticker, {}).get('ltp', 'N/A')
+        print(dt.now(time_zone), ticker, ticker_price)
+        trade_flag = real_info[ticker].trade_flag
 
-    # Validate dataframes are initialized and have enough data
-    if df_5 is None or len(df_5) < 2:
-        logging.info("df_5 not initialized or insufficient data")
-        return
+        # Get symbol-specific dataframes
+        df_5 = symbol_dataframes[ticker]['df_5']
+        df_15 = symbol_dataframes[ticker]['df_15']
+        df_60 = symbol_dataframes[ticker]['df_60']
 
-    # Detect RSI crossover (fresh crossover = RSI crosses above RSI_MA)
-    rsi_above_ma_prev = df_5['rsi'].iloc[-3] > df_5['rsi_smooth'].iloc[-3] if len(df_5) >= 3 else False
-    rsi_above_ma_current = df_5['rsi'].iloc[-2] > df_5['rsi_smooth'].iloc[-2]
-    
-    # Fresh crossover detected: RSI crosses from below to above MA
-    if not rsi_above_ma_prev and rsi_above_ma_current:
-        logging.info('Fresh RSI crossover detected!')
-        real_info[ticker]['crossover_active'] = True
-        real_info[ticker]['trade_taken_on_crossover'] = False
-    
-    # Crossover ended: RSI crosses back below MA
-    elif rsi_above_ma_prev and not rsi_above_ma_current:
-        logging.info('RSI crossed back below MA - resetting crossover flags')
-        real_info[ticker]['crossover_active'] = False
-        real_info[ticker]['trade_taken_on_crossover'] = False
-    
-    # Detect ongoing crossover (for startup/restart scenarios)
-    # If crossover_active is False but RSI is currently above MA, activate it
-    elif not real_info[ticker]['crossover_active'] and rsi_above_ma_current:
-        logging.info('Ongoing RSI crossover detected (startup/restart) - activating crossover flag')
-        print("Ongoing RSI crossover detected (startup/restart) - activating crossover flag")
-        real_info[ticker]['crossover_active'] = True
-        real_info[ticker]['trade_taken_on_crossover'] = False
+        # Validate dataframes are initialized and have enough data
+        if df_5 is None or len(df_5) < 2:
+            logging.info(f"{ticker}: df_5 not initialized or insufficient data")
+            continue
 
-    #entry condition - only trade on fresh crossover
-    if (trade_flag == 0 and 
-        real_info[ticker]['crossover_active'] and 
-        not real_info[ticker]['trade_taken_on_crossover'] and 
-        df_5['rsi_flag'].iloc[-2] and 
-        ticker_price != 'N/A'):
+        # Detect RSI crossover (fresh crossover = RSI crosses above RSI_MA)
+        rsi_above_ma_prev = df_5['rsi'].iloc[-3] > df_5['rsi_smooth'].iloc[-3] if len(df_5) >= 3 else False
+        rsi_above_ma_current = df_5['rsi'].iloc[-2] > df_5['rsi_smooth'].iloc[-2] if len(df_5) >= 2 else False
         
-        current_high=df_5['high'].iloc[-2]
-        current_low=df_5['low'].iloc[-2]
-        print('rsi is above ma',current_high,ticker_price)
-        # logging.info(f'Entry condition met - current_high: {current_high}, current_low: {current_low}')
+        # Fresh crossover detected: RSI crosses from below to above MA
+        if not rsi_above_ma_prev and rsi_above_ma_current:
+            logging.info(f'{ticker}: Fresh RSI crossover detected!')
+            real_info[ticker].crossover_active = True
+            real_info[ticker].trade_taken_on_crossover = False
         
-        if ticker_price>=current_high  and  ((df_15['rsi_flag'].iloc[-1]==True and min_15_condition) or (df_60['rsi_flag'].iloc[-1]==True and min_60_condition) or (index_15['rsi_flag'].iloc[-1]==True and index_15_condition)):
-            logging.info(f'Placing buy order - ticker_price: {ticker_price} >= current_high: {current_high}')
+        # Crossover ended: RSI crosses back below MA
+        elif rsi_above_ma_prev and not rsi_above_ma_current:
+            logging.info(f'{ticker}: RSI crossed back below MA - resetting crossover flags')
+            real_info[ticker].crossover_active = False
+            real_info[ticker].trade_taken_on_crossover = False
+        
+        # Detect ongoing crossover (for startup/restart scenarios)
+        # If crossover_active is False but RSI is currently above MA, activate it
+        elif not real_info[ticker].crossover_active and rsi_above_ma_current:
+            logging.info(f'{ticker}: Ongoing RSI crossover detected (startup/restart) - activating crossover flag')
+            print(f"{ticker}: Ongoing RSI crossover detected (startup/restart) - activating crossover flag")
+            real_info[ticker].crossover_active = True
+            real_info[ticker].trade_taken_on_crossover = False
 
-          
-            data = {
-                "symbol":fyers_initials+ticker,
-                "qty":lot_size*quantity_position,
-                "type":2,
-                "side":1,
-                "productType":"INTRADAY",
-                "limitPrice":0,
-                "stopPrice":0,
-                "validity":"DAY",
-                "disclosedQty":0,
-                "offlineOrder":False,
-                "orderTag":f"{int(current_high)}d{int(current_low)}",
-                "isSliceOrder":False
-            }
-            try:
-                response = fyers.place_order(data=data)
-                logging.info(f'Order response: {response}')
-                trade_flag=1
-                real_info[ticker]['trade_flag']=1
-                real_info[ticker]['buy_price']=ticker_price
-                real_info[ticker]['high']=current_high
-                real_info[ticker]['low']=current_low
-                real_info[ticker]['range']=current_high - current_low
-                real_info[ticker]['trade_taken_on_crossover']=True  # Mark that trade was taken on this crossover
-                t1,t2,t3,t4,t5=get_targets(real_info[ticker]['range'],real_info[ticker]['buy_price'])
-                real_info[ticker]['targets']={'t1':t1,'t2':t2,'t3':t3,'t4':t4,'t5':t5}
-                logging.info(f'Trade taken on crossover - Targets: t1={t1}, t2={t2}, t3={t3}, t4={t4}, t5={t5}')
-                logging.info(f'Crossover flag locked until RSI crosses back below MA')
-            except Exception as e:
-                logging.error(f'Error placing buy order: {e}')
+        # Entry condition - only trade on fresh crossover
+        if (trade_flag == 0 and 
+            real_info[ticker].crossover_active and 
+            not real_info[ticker].trade_taken_on_crossover and 
+            df_5['rsi_flag'].iloc[-2] and 
+            ticker_price != 'N/A'):
+            
+            current_high = df_5['high'].iloc[-2]
+            current_low = df_5['low'].iloc[-2]
+            print(f'{ticker}: rsi is above ma, current_high={current_high}, ticker_price={ticker_price}')
+            
+            if ticker_price >= current_high and ((df_15['rsi_flag'].iloc[-1] == True and min_15_condition) or 
+                                               (df_60['rsi_flag'].iloc[-1] == True and min_60_condition) or 
+                                               (index_15['rsi_flag'].iloc[-1] == True and index_15_condition)):
+                logging.info(f'{ticker}: Placing buy order - ticker_price: {ticker_price} >= current_high: {current_high}')
 
-    #already open position
-    elif trade_flag==1 and ticker_price != 'N/A':
-        print(f"Trade already placed - ticker_price: {ticker_price}, t2: {real_info[ticker]['targets'].get('t2')}, low: {real_info[ticker]['low']}")
-        if trade_flag == 1 and check_active_position(ticker):
-            print(f"Active position detected for {ticker} - current price: {ticker_price}")
-        else:
-            logging.info(f"No active position detected for {ticker} - resetting trade flag")
-            trade_flag = 0
-            real_info[ticker].update({
-                'trade_flag': 0,
-                'buy_price': 0,
-                'quantity': 0,'high': 0,'low': 0,'range': 0,'targets':{}})
-            return 0
+                data = {
+                    "symbol": fyers_initials + ticker,
+                    "qty": lot_size * quantity_position,
+                    "type": 2,
+                    "side": 1,
+                    "productType": "INTRADAY",
+                    "limitPrice": 0,
+                    "stopPrice": 0,
+                    "validity": "DAY",
+                    "disclosedQty": 0,
+                    "offlineOrder": False,
+                    "orderTag": f"{int(current_high)}d{int(current_low)}",
+                    "isSliceOrder": False
+                }
+                try:
+                    response = fyers.place_order(data=data)
+                    logging.info(f'{ticker}: Order response: {response}')
+                    trade_flag = 1
+                    real_info[ticker].trade_flag = 1
+                    real_info[ticker].buy_price = ticker_price
+                    real_info[ticker].high = current_high
+                    real_info[ticker].low = current_low
+                    real_info[ticker].range = current_high - current_low
+                    real_info[ticker].trade_taken_on_crossover = True  # Mark that trade was taken on this crossover
+                    real_info[ticker].order_time = dt.now(time_zone)  # Track when order was placed
+                    real_info[ticker].t1_executed = False
+                    real_info[ticker].t2_executed = False
+                    real_info[ticker].t3_executed = False
+                    t1, t2, t3, t4, t5 = get_targets(real_info[ticker].range, real_info[ticker].buy_price)
+                    real_info[ticker].targets = {'t1': t1, 't2': t2, 't3': t3, 't4': t4, 't5': t5}
+                    logging.info(f'{ticker}: Trade taken on crossover - Targets: t1={t1}, t2={t2}, t3={t3}, t4={t4}, t5={t5}')
+                    logging.info(f'{ticker}: Crossover flag locked until RSI crosses back below MA')
+                except Exception as e:
+                    logging.error(f'{ticker}: Error placing buy order: {e}')
 
-        if ticker_price>real_info[ticker]['targets'].get('t3'):
-            logging.info(f'Target t3 reached - consider partial profit booking at {ticker_price}')
-            # Implement partial profit booking logic here (e.g., exit half position)
-            partial_quantity = quantity_position * v3_pos  # Calculate quantity to sell based on v3_pos
-            sell_partial_quantity(ticker, int(partial_quantity))
+        # Already open position
+        elif trade_flag == 1 and ticker_price != 'N/A':
+            print(f"{ticker}: Trade already placed - ticker_price: {ticker_price}, t2: {real_info[ticker].targets.get('t2')}, low: {real_info[ticker].low}")
+            if trade_flag == 1 and (check_active_position(ticker) or check_active_order(ticker)):
+                print(f"{ticker}: Active position or order detected - current price: {ticker_price}")
+            else:
+                # Allow 30 seconds buffer after order placement before resetting trade_flag
+                order_time = real_info[ticker].order_time
+                if order_time and (dt.now(time_zone) - order_time).total_seconds() < 30:
+                    logging.info(f"{ticker}: Waiting for order to be filled... ({(dt.now(time_zone) - order_time).total_seconds():.1f}s elapsed)")
+                    continue
+                else:
+                    logging.info(f"{ticker}: No active position detected after 30s - resetting trade flag")
+                    trade_flag = 0
+                    real_info[ticker].reset(keep_crossover_state=True)
+                    continue
 
-        elif (ticker_price>real_info[ticker]['targets'].get('t2')) :
-            #close position
-            logging.info(f'Target t2 reached - closing partial at {ticker_price}')
-            partial_quantity = quantity_position * v2_pos  # Calculate quantity to sell based on v2_pos
-            sell_partial_quantity(ticker, int(partial_quantity))
+            if ticker_price > real_info[ticker].targets.get('t3') and not real_info[ticker].t3_executed:
+                logging.info(f'{ticker}: Target t3 reached - consider partial profit booking at {ticker_price}')
+                # Implement partial profit booking logic here (e.g., exit half position)
+                partial_quantity = quantity_position * v3_pos  # Calculate quantity to sell based on v3_pos
+                sell_partial_quantity(ticker, int(partial_quantity))
+                real_info[ticker].t3_executed = True
 
-        if ticker_price<(real_info[ticker]['low']):
-            logging.info(f"Price {ticker_price} went below low {real_info[ticker]['low']} - closing position")
-            try:
-                fyers.exit_positions({'id':fyers_initials+ticker+"-INTRADAY"})
-                real_info = { symbol_list[0]:{
-                'trade_flag':0,
-                'buy_price':0,
-                'quantity':0,
-                'pnl':0,        
-                'condition':False,
-                'wait_until':None,
-                'high':0,
-                'low':0,
-                'range':0,
-                "targets":{},
-                'crossover_active':real_info[ticker]['crossover_active'],
-                'trade_taken_on_crossover':True  # Prevent re-entry until fresh crossover
-                }}
-                print('position closed at stop loss')
-            except Exception as e:
-                logging.error(f'Error exiting position at stop loss: {e}')  
-                print('position close failed at stop loss')
+            elif ticker_price > real_info[ticker].targets.get('t2') and not real_info[ticker].t2_executed:
+                # Close position
+                logging.info(f'{ticker}: Target t2 reached - closing partial at {ticker_price}')
+                partial_quantity = quantity_position * v2_pos  # Calculate quantity to sell based on v2_pos
+                sell_partial_quantity(ticker, int(partial_quantity))
+                real_info[ticker].t2_executed = True
+                
+            elif ticker_price > real_info[ticker].targets.get('t1') and not real_info[ticker].t1_executed:
+                logging.info(f'{ticker}: Target t1 reached - setting wait_until_flag at {ticker_price}')
+                real_info[ticker].wait_until_flag = True
+                real_info[ticker].wait_until = dt.now(time_zone) + dt.duration(seconds=wait_buffer)
+                real_info[ticker].t1_executed = True
 
-    store(real_info,account_type)
+            if ticker_price < (real_info[ticker].low):
+                logging.info(f"{ticker}: Price {ticker_price} went below low {real_info[ticker].low} - closing position")
+                try:
+                    fyers.exit_positions({'id': fyers_initials + ticker + "-INTRADAY"})
+                    trade_flag = 0  # Update global trade_flag
+                    real_info[ticker].reset(keep_crossover_state=True)
+                    logging.info(f'{ticker}: position closed at stop loss')
+                except Exception as e:
+                    logging.error(f'{ticker}: Error exiting position at stop loss: {e}')  
+                    logging.error(f'{ticker}: position close failed at stop loss')
 
-
-
- 
+    store(real_info, account_type)
 
 async def strategy_logic():
     """Strategy logic that runs every second"""
@@ -557,11 +854,7 @@ async def strategy_logic():
 
 
 
-
-
-
-
-# ==================== SHARED DATA ====================
+# ==================== SOCKET DATA MANAGEMENT ====================
 class SocketData:
     """Async-safe data storage for both sockets"""
     def __init__(self):
@@ -619,9 +912,6 @@ class SocketData:
                 
                 # Only print if source changed
                 if self.last_source != source:
-                    # print(f"\n{'='*60}")
-                    # print(f"SWITCHED TO: {source}")
-                    # print(f"{'='*60}")
                     self.last_source = source
                 
                 # Display the latest data
@@ -681,34 +971,14 @@ class SocketData:
                 'close': data.get('close', 'N/A'),
                 'symbol': symbol_key
             }
-        
-        # print(f"\n{'='*60}")
-        # print(f"📊 DATA SOURCE: {source}")
-        # print(f"{'='*60}")
-        # print(f"Exchange Time: {time_str}")
-        # print(f"Last Price: {data.get('ltp', 'N/A')}")
-        # print(f"Volume: {data.get('volume', 'N/A')}")
-        # print(f"Buy Price: {data.get('buy_price', 'N/A')}")
-        # print(f"Buy Quantity: {data.get('buy_quantity', 'N/A')}")
-        # print(f"Sell Price: {data.get('sell_price', 'N/A')}")
-        # print(f"Sell Quantity: {data.get('sell_quantity', 'N/A')}")
-        # print(f"Change: {data.get('change', 'N/A')}")
-        # print(f"Open: {data.get('open', 'N/A')}")
-        # print(f"High: {data.get('high', 'N/A')}")
-        # print(f"Low: {data.get('low', 'N/A')}")
-        # print(f"Close: {data.get('close', 'N/A')}")
-        # print(f"Symbol: {data.get('symbol', 'N/A')}")
-        # print(f"{'='*60}")
 
 # Create shared data store
 shared_data = SocketData()
 
-# ==================== FYERS SOCKET (PRIMARY) ====================
+# ==================== WEBSOCKET HANDLERS ====================
 def start_fyers_socket(loop):
     """Start Fyers WebSocket connection (runs in executor thread)"""
     def onmessage(message):
-
-        # print('fyers',message)
         if isinstance(message, dict):
             # Extract exchange time (epoch timestamp)
             exchange_time = message.get('exch_feed_time', 0)
@@ -728,8 +998,6 @@ def start_fyers_socket(loop):
                 'low': message.get('low_price', 'N/A'),
                 'close': message.get('prev_close_price', 'N/A')
             }
-            # print('fyers message received')
-            # print(message)
             
             # Schedule update in the event loop
             asyncio.run_coroutine_threadsafe(
@@ -769,7 +1037,6 @@ def start_fyers_socket(loop):
     # Connect (blocking call in this thread)
     fyers_ws.connect()
 
-# ==================== KITE SOCKET (SECONDARY) ====================
 def start_kite_socket(loop):
     """Start Kite WebSocket connection (runs in executor thread)"""
     if not secondary_data:
@@ -777,7 +1044,7 @@ def start_kite_socket(loop):
         return
     
     # Initialize KiteConnect
-    kite = KiteConnect(api_key=api_key)
+    kite = KiteConnect(api_key=kite_key)
     kite.set_access_token(access_token_kite)
     
     # Get instrument tokens for all symbols
@@ -808,16 +1075,12 @@ def start_kite_socket(loop):
         return
     
     instrument_tokens = list(token_symbol.keys())
-    print("kite tokens",instrument_tokens)
+    print("kite tokens", instrument_tokens)
     
     # Initialize KiteTicker
-    kws = KiteTicker(api_key, access_token_kite)
-
-# kite data [{'tradable': False, 'mode': 'full', 'instrument_token': 256265, 'last_price': 25769.55, 'ohlc': {'high': 25885.3, 'low': 25763.0, 'open': 25873.35, 'close': 25819.35}, 'change': -0.19287859686630096, 'exchange_timestamp': datetime.datetime(2026, 2, 19, 10, 13, 16)}]
+    kws = KiteTicker(kite_key, access_token_kite)
 
     def on_ticks(ws, ticks):
-        # print('kite data',ticks)
-   
         for tick in ticks:
             # Extract exchange time
             exchange_time = tick.get('exchange_timestamp', None)
@@ -828,16 +1091,13 @@ def start_kite_socket(loop):
             elif exchange_time is None:
                 exchange_time = 0
             
-            token=tick.get('instrument_token', None)
-            name=token_symbol.get(token, 'N/A')
-            # print(name)
+            token = tick.get('instrument_token', None)
+            name = token_symbol.get(token, 'N/A')
 
-            if name==index_name:
-                # print('index tick',tick)
+            if name == index_name:
                 # Prepare index data in standardized format
                 index_data = {
                     'ltp': tick.get('last_price', 'N/A'),
-
                     'change': tick.get('change', 'N/A'),
                     'symbol': index_name,
                     'open': tick['ohlc'].get('open', 'N/A'),
@@ -845,13 +1105,11 @@ def start_kite_socket(loop):
                     'low': tick['ohlc'].get('low', 'N/A'),
                     'close': tick['ohlc'].get('close', 'N/A')
                 }
-                # Update final_data with index data
-                # final_data[index_name] = index_data
-                # print(index_data)
+                
                 asyncio.run_coroutine_threadsafe(
-                shared_data.update_kite(index_data, exchange_time),
-                loop
-            )
+                    shared_data.update_kite(index_data, exchange_time),
+                    loop
+                )
             
             # Extract depth data
             buy_quantity = 'N/A'
@@ -894,8 +1152,6 @@ def start_kite_socket(loop):
                 'low': low_price,
                 'close': close_price
             }
-            # print('kite message received')
-            # print(data)
             
             # Schedule update in the event loop
             asyncio.run_coroutine_threadsafe(
@@ -934,7 +1190,7 @@ def start_kite_socket(loop):
     kws.connect(threaded=False)
 
 
-# ==================== MAIN ====================
+# ==================== MAIN EXECUTION ====================
 async def main():
     """Main async function to run both sockets"""
     print("\n" + "="*60)

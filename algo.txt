@@ -1,0 +1,688 @@
+//@version=5
+strategy("AlgoFox-Breakout_BB_Volume_RSI_MACD", shorttitle="AlgoFox-Breakout_BB_Volume_RSI_MACD", overlay=true, default_qty_type=strategy.fixed, default_qty_value=1, pyramiding = 0, initial_capital=300000, currency=currency.NONE, commission_value=0, commission_type=strategy.commission.percent, process_orders_on_close=true, calc_on_every_tick=false, calc_on_order_fills = false)
+//Breakout-Inputs
+bo_switch = input.session(defval="Off", title="Breakout_On_OFF", options=["Off", "On"], group = "Breakout_Settings")
+paraRefTF1 = input.timeframe("5", "Reference Timeframe", group = "Breakout_Settings")
+paraEntryBuffer = input.float(0, "Entry Buffer (pts)", minval = 0, group = "Breakout_Settings")
+var float previous_5min_high = na
+var float completed_5min_high = na
+var bool in_trade = false
+// New
+var int sl_hit_bar_time = 0 // Stores the time of the bar when SL was hit
+// Request the high of the previous closed bar on the reference timeframe
+// Function to get the high of the previous closed bar on the reference timeframe (though not directly used in the current version)
+get_previous_ref_high(tf) => request.security(syminfo.tickerid, tf, high[1], lookahead = barmerge.lookahead_off)
+// Function to get trade setup values from the reference timeframe
+GetTradeSetup() =>
+    _FC = session.isfirstbar
+    _BSFC = ta.barssince(_FC) + 1
+    _FCH = ta.valuewhen(_FC, high, 0)
+    _FCL = ta.valuewhen(_FC, low, 0)
+    FCH1 = ta.valuewhen(_FC, high + paraEntryBuffer, 0)
+    FCL1 = ta.valuewhen(_FC, low + paraEntryBuffer, 0)
+    [_FC, _BSFC, _FCH, _FCL, FCH1, FCL1]
+// Request trade setup data from the reference timeframe
+[RefFC, RefBSFC, RefFCH, RefFCL, RefFCH1, RefFCL1] = request.security(syminfo.tickerid, paraRefTF1, GetTradeSetup(), lookahead = barmerge.lookahead_off)
+// Plotting reference levels
+plot(RefFCH,"",color.green,style=plot.style_linebr)
+plot(RefFCL,"",color.red,style=plot.style_linebr)
+plot(RefFCH1,"",color.green,style=plot.style_circles)
+plot(RefFCL1,"",color.red,style=plot.style_circles)
+ 
+//BB-Inputs (Bollinger Bands)
+bb_switch = input.session(defval="Off", title="BB_On_OFF", options=["Off", "On"], group = "Bolinger_Bands_Settings")
+paraRefTF2 = input.timeframe("5", "BB Timeframe", group = "Bolinger_Bands_Settings")
+length = input.int(20, minval=1, group = "Bolinger_Bands_Settings")
+maType = input.string("SMA", "Basis MA Type", options = ["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group = "Bolinger_Bands_Settings")
+src = input(close, title="Source", group = "Bolinger_Bands_Settings")
+mult = input.float(2.0, minval=0.001, maxval=50, title="StdDev", group = "Bolinger_Bands_Settings")
+// Moving Average function for Bollinger Bands
+ma(source, length, _type) =>
+    switch _type
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "SMMA (RMA)" => ta.rma(source, length)
+        "WMA" => ta.wma(source, length)
+        "VWMA" => ta.vwma(source, length)
+basis1 = ma(src, length, maType)
+dev = mult * ta.stdev(src, length)
+upper1 = basis1 + dev
+lower1 = basis1 - dev
+offset = input.int(0, "Offset", minval = -500, maxval = 500, display = display.data_window)
+ 
+// Request Bollinger Band values from the reference timeframe
+basis = request.security(syminfo.tickerid, paraRefTF2, basis1, lookahead = barmerge.lookahead_off)
+upper = request.security(syminfo.tickerid, paraRefTF2, upper1, lookahead = barmerge.lookahead_off)
+lower = request.security(syminfo.tickerid, paraRefTF2, lower1, lookahead = barmerge.lookahead_off)
+//Volume_inputs
+vol_switch = input.session(defval="Off", title="Volume_On_OFF", options=["Off", "On"], group = "Volume_Settings")
+vol_per = input.int(defval=20,title = "Volume-Average_Period",minval=1, group = "Volume_Settings")
+currentAvgVol = ta.sma(volume, vol_per)
+// Rsi-Inputs
+rsi_switch = input.session(defval="On", title="RSI_On_OFF", options=["Off", "On"], group = "RSI_Settings")
+paraRefTF3 = input.timeframe("5", "RSI Timeframe", group = "RSI_Settings")
+rsi_len = input.int(14, "RSI Length", group="RSI_Settings")
+overBought = input( 200 , title = "Upper-Level", group = "RSI_Settings")
+overSold = input( 00 , title = "Lower-Level", group = "RSI_Settings")
+rsiMA_len = input.int(20, "RSI MA Length", group="RSI_Settings") // New Input for RSI MA Length
+rsiVal = ta.rsi(close, rsi_len)
+rsiMA = ta.sma(rsiVal, rsiMA_len) // Calculate RSI MA
+// Get RSI and RSI MA from reference timeframe
+rsiValue = request.security(syminfo.tickerid, paraRefTF3, rsiVal, lookahead = barmerge.lookahead_off)
+rsiMAValue = request.security(syminfo.tickerid, paraRefTF3, rsiMA, lookahead = barmerge.lookahead_off)
+// RSI-Calculation for Entry
+// Get RSI and RSI MA from 5-minute timeframe using request.security
+rsiValue_5min = request.security(syminfo.tickerid, "5", rsiVal, lookahead = barmerge.lookahead_off)
+rsiMAValue_5min = request.security(syminfo.tickerid, "5", rsiMA, lookahead = barmerge.lookahead_off)
+ 
+// New variables to track RSI crossover status and the high of the crossover candle
+var bool rsi_crossover_confirmed = false // Becomes true when a 5-min RSI crossover is confirmed
+var float crossover_candle_high = na     // Stores the high of the 5-min candle where crossover was confirmed
+// Detect RSI crossover from the *closed* 5-minute bar
+// Using request.security with lookahead_on for confirmation on close of the 5-min bar
+bool rsi_crossover_signal = request.security(syminfo.tickerid, "5", ta.crossover(rsiVal, rsiMA), lookahead = barmerge.lookahead_off)
+// Get the high of the 5-minute bar UNCONDITIONALLY (moved outside the if block)
+float high_5min_on_close = request.security(syminfo.tickerid, "5", high, lookahead = barmerge.lookahead_off)
+// Update crossover_candle_high and rsi_crossover_confirmed
+if rsi_crossover_signal
+    rsi_crossover_confirmed := true
+    // Store the high of the 5-minute bar that *just closed* and confirmed the crossover
+    crossover_candle_high := high_5min_on_close // Use the unconditionally fetched high
+else if rsiValue_5min < rsiMAValue_5min // Reset if RSI drops below MA (setup invalid)
+    rsi_crossover_confirmed := false
+    crossover_candle_high := na
+/// MACD Inputs
+macd_switch = input.session(defval="Off", title="MACD_On_OFF", options=["Off", "On"], group = "Macd_Settings")
+paraRefTF4 = input.timeframe("5", "MACD Timeframe", group = "Macd_Settings")
+fast_length = input(title = "Fast Length", defval = 12, group = "Macd_Settings")
+slow_length = input(title = "Slow Length", defval = 26, group = "Macd_Settings")
+src1 = input(title = "Source", defval = close, group = "Macd_Settings")
+signal_length = input.int(title = "Signal Smoothing", minval = 1, maxval = 50, defval = 9, display = display.data_window, group = "Macd_Settings")
+sma_source = input.string(title = "Oscillator MA Type", defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "Macd_Settings")
+sma_signal = input.string(title = "Signal Line MA Type", defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "Macd_Settings")
+// Calculating MACD
+fast_ma = sma_source == "SMA" ? ta.sma(src1, fast_length) : ta.ema(src1, fast_length)
+slow_ma = sma_source == "SMA" ? ta.sma(src1, slow_length) : ta.ema(src1, slow_length)
+macdval = fast_ma - slow_ma
+signalval = sma_signal == "SMA" ? ta.sma(macdval, signal_length) : ta.ema(macdval, signal_length)
+// Get MACD values from reference timeframe
+macd = request.security(syminfo.tickerid, paraRefTF4, macdval, lookahead = barmerge.lookahead_off)
+signal = request.security(syminfo.tickerid, paraRefTF4, signalval, lookahead = barmerge.lookahead_off)
+//Target-ATR (Average True Range)
+atr_length = input.int(title="Atr-Length", defval=14, minval=1, group = "Atr-Settings")
+atr_smoothing = input.string(title="Atr-Smoothing", defval="RMA", options=["RMA", "SMA", "EMA", "WMA"], group = "Atr-Settings")
+paraRefTF5 = input.timeframe("5", "ATR Timeframe", group = "Atr-Settings")
+// MA function for ATR smoothing
+ma_function(atr_source, atr_length) =>
+    switch atr_smoothing
+        "RMA" => ta.rma(atr_source, atr_length)
+        "SMA" => ta.sma(atr_source, atr_length)
+        "EMA" => ta.ema(atr_source, atr_length)
+        "WMA" => ta.wma(atr_source, atr_length)
+atr2 = ma_function(ta.tr(true), atr_length)
+_atr = atr2
+atr1 = request.security(syminfo.tickerid, paraRefTF5, _atr, lookahead = barmerge.lookahead_off)
+high1 = request.security(syminfo.tickerid, "5", high, lookahead = barmerge.lookahead_off)
+// New Inputs for Target Levels based on Entry Candle Range and Risk-to-Reward
+paraTGTMode1 = input.string(defval="Range_Ratio", title="Target-1 : ", options=["Off","%","Pts", "ATR", "Range_Ratio"], group = "Target Settings")
+paraTGT1 = input.float(0.4, "T1 : ", minval = 0, group = "Target Settings")
+paraTGTMode2 = input.string(defval="Range_Ratio", title="Target-2 : ", options=["Off","%","Pts", "ATR", "Range_Ratio"], group = "Target Settings")
+paraTGT2 = input.float(1.5, "T2 : ", minval = 0, group = "Target Settings")
+paraTGTMode3 = input.string(defval="Range_Ratio", title="Target-3 : ", options=["Off","%","Pts", "ATR", "Range_Ratio"], group = "Target Settings")
+paraTGT3 = input.float(100, "T3 : ", minval = 0, group = "Target Settings")
+paraTGTMode4 = input.string(defval="%", title="Target-4 : ", options=["Off","%","Pts", "ATR", "Range_Ratio"], group = "Target Settings")
+paraTGT4 = input.float(200, "T4 : ", minval = 0, group = "Target Settings")
+ 
+// NEW INPUT FOR TARGET REFERENCE CANDLE (Hardcoded to Previous Candle)
+paraTargetRefCandle = input.string(defval="Previous Candle", title="Target Reference Candle", options=["Previous Candle"], group = "Target Settings")
+ 
+// Stoploss Settings
+// Changed "Candle_Based" to "Previous_5min_Candle_Low" for direct selection
+paraSLMode = input.string(defval="Previous_5min_Candle_Low", title="Stoploss : ", options=["Off", "%", "Pts", "Previous_5min_Candle_Low","ATR-Based"], inline = "SL", group = "Stoploss Settings")
+paraSL = input.float(1, "Value : ", minval = 0.1, inline = "SL", group = "Stoploss Settings")
+ 
+// REMOVED: paraSLRefCandle is no longer needed as "Previous_5min_Candle_Low" is a direct option.
+// paraSLRefCandle = input.string(defval="Previous Candle Low", title="SL Reference Candle", options=["Previous Candle Low"], group = "Stoploss Settings")
+ 
+// Trailing Stop Loss (TSL) Settings
+paraTSLMode = input.string(defval="Atr-Based", title="Trail SL : ", options=["Off", "%", "Pts","Atr-Based", "Custom"], inline = "TSL", group = "TSL Settings")
+paraTSL = input.float(1.5, "TSL Value : ", minval = 0.1, inline = "TSL", group = "TSL Settings")
+paraCustomTSLMove = input.float(1000, "Custom TSL Move", minval = 0.1, inline = "CTSL", group = "TSL Settings")
+paraCustomTSLTrail = input.float(1000, "Custom TSL Trail", minval = 0.1, inline = "CTSL", group = "TSL Settings")
+ 
+// Halfway Settings for TSL adjustments
+paraTGTTSL1 = input.bool(false, "After Hiting Target-1", inline = "Target-Hit", group = "Halfway Settings")
+paraTGTTSL2 = input.bool(false, "After Hiting Target-2", inline = "Target-Hit", group = "Halfway Settings")
+paraTGTTSL3 = input.bool(false, "After Hiting Target-3", inline = "Target-Hit", group = "Halfway Settings")
+ 
+// Fullway Settings for TSL adjustments
+paraTGTTSL4 = input.bool(true, "After Hiting Target-1", inline = "Target-Hit", group = "Fullway Settings")
+paraTGTTSL5 = input.bool(true, "After Hiting Target-2", inline = "Target-Hit", group = "Fullway Settings")
+paraTGTTSL6 = input.bool(true, "After Hiting Target-3", inline = "Target-Hit", group = "Fullway Settings")
+ 
+paraSystemMode = input.session(defval="Intraday", title="System Mode", options=["Intraday", "Positional"], group = "System Settings")
+s = input.session(title='Intraday Start Session:', defval='0915-1505', group='System Settings')
+e = input.session(title='Intraday End Session:', defval='1515-1520', group='System Settings')
+ 
+paraStag = input.string(title='Strategy Tag', defval='PRO1', group='AlgoFox Setup:')
+paraCode = input.string(title='Code', defval='F1372A7853352U', group='AlgoFox Setup:')
+paraProductType = input.string(title="Product Type", defval='NRML', options=['MIS','NRML','CNC'], group='AlgoFox Setup:')
+paraInstr = input.string(title='Instrument Type', defval='OPTIDX', options=['EQ','FUTIDX','OPTIDX','FUTSTK','OPTSTK','FUTCOM','FUTCUR'], group='AlgoFox Setup:')
+paraLot = input.int(title="Lot Size", defval=75, minval=1, group='AlgoFox Setup:')
+paraQty = input.int(title='Lot Multiplier ', defval=4, minval=1, group='AlgoFox Setup:')
+paraT1Qty = input.float(title='Target-1 Exit Qty (%)', defval=25, minval=0, maxval = 100, group='AlgoFox Setup:', tooltip='Qty in Percentage')
+paraT2Qty = input.float(title='Target-2 Exit Qty (%)', defval=25, minval=0, maxval = 100, group='AlgoFox Setup:', tooltip='Qty in Percentage')
+paraT3Qty = input.float(title='Target-3 Exit Qty (%)', defval=25, minval=0, maxval = 100, group='AlgoFox Setup:', tooltip='Qty in Percentage')
+ 
+FC = session.isfirstbar
+LC = session.islastbar
+st = paraSystemMode=="Positional" ? 1 : time(timeframe.period, s)
+et = paraSystemMode=="Intraday" and time(timeframe.period, e)
+// Detect the closing of a 5-minute bar and update previous_5min_high
+previous_5min_high := request.security(syminfo.tickerid, paraRefTF1, high[1], lookahead = barmerge.lookahead_on)
+plot(previous_5min_high, title="Prev 5min High", color=color.red)
+plot(high, title="Current High", color=color.blue)
+plot(high > previous_5min_high ? 1 : 0, title="Breakout Condition", color=color.orange, style=plot.style_histogram)
+//BB-Calculation
+eBuy1 = ((high > lower) or (high > basis)) and st and barstate.isconfirmed
+// Volume-Calculation
+eBuy2 = volume > (currentAvgVol) and st and barstate.isconfirmed
+// RSI Buy Condition (eBuy3 - using the confirmed crossover)
+// Track when crossover occurred
+var int crossover_bar_time = na
+ 
+if rsi_crossover_signal
+    crossover_bar_time := time("5")
+var bool rsi_setup_active = false
+if rsiValue_5min > rsiMAValue_5min
+    rsi_setup_active := true
+else if rsiValue_5min < rsiMAValue_5min
+    rsi_setup_active := false
+// Entry when RSI is still above MA AND price breaks previous candle high
+// Ensure current bar is AFTER crossover bar, and RSI is still above, and high breaks prev bar's high
+valid_post_crossover = not na(crossover_bar_time) and time("5") > crossover_bar_time
+ 
+// --- Additional Entry Confirmation Inputs (15m RSI + MA and RSI + Middle Band) ---
+extra_rsi_ma_switch = input.string("Off", title="Extra RSI > MA Confirm (15m)", options=["On", "Off"], group="Extra Entry Confirmation")
+ 
+extra_rsi_len = input.int(14, title="RSI Length (15m)", group="Extra Entry Confirmation")
+extra_rsi_ma_len = input.int(20, title="MA Length (RSI)", group="Extra Entry Confirmation")
+ 
+// RSI and MA comparison on 15m
+rsi_15m = request.security(syminfo.tickerid, "15", ta.rsi(close, extra_rsi_len))
+rsi_ma_15m = request.security(syminfo.tickerid, "15", ta.sma(ta.rsi(close, extra_rsi_len), extra_rsi_ma_len))
+rsi_condition_1 = rsi_15m > rsi_ma_15m
+ 
+// Final extra confirmation logic (applied only after 5-min RSI crossover is valid)
+extra_conditions_ok = (extra_rsi_ma_switch == "Off") or (extra_rsi_ma_switch == "On" and rsi_condition_1)
+plot(extra_rsi_ma_switch == "On" ? rsi_15m - rsi_ma_15m : na, color=color.teal, title="15m RSI - RSI MA")
+ 
+eBuy3 = rsi_crossover_confirmed and rsi_setup_active and valid_post_crossover and high > previous_5min_high and extra_conditions_ok and st
+ 
+//MACD-Calculation
+eBuy4 = (macd > signal) and st and barstate.isconfirmed
+//Breakout-Calculation
+br_cond1 = ((low > RefFCH) and (high < RefFCH1)) or ((low > RefFCL) and (high < RefFCL1))
+br_cond2 = (low < RefFCH and high > RefFCH) or (low < RefFCH1 and high > RefFCH1)
+br_cond3 = (low < RefFCL and high > RefFCL) or (low < RefFCL1 and high > RefFCL1)
+br_cond = br_cond1 or br_cond2 or br_cond3 or RefFC
+eBuy5 = (br_cond) and st
+var bool PBuy = na
+// Consolidated PBuy logic based on switch inputs
+if bb_switch=="On" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy2 and eBuy3 and eBuy4 and eBuy5
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy2 and eBuy3 and eBuy4 and eBuy5
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy3 and eBuy4 and eBuy5
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy2 and eBuy4 and eBuy5
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy2 and eBuy3 and eBuy5
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy2 and eBuy3 and eBuy4
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy3 and eBuy4 and eBuy5
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy2 and eBuy4 and eBuy5
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy2 and eBuy3 and eBuy5
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy2 and eBuy3 and eBuy4
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy4 and eBuy5
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy3 and eBuy5
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy3 and eBuy4
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy2 and eBuy5
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy2 and eBuy4
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy2 and eBuy3
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy4 and eBuy5
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy2 and eBuy5
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy3 and eBuy5
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="On"
+    PBuy:= eBuy4 and eBuy5
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy1 and eBuy5
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy4
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy3
+else if bb_switch=="On" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy1 and eBuy2
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy2 and eBuy4
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy2 and eBuy3
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy3 and eBuy4
+else if bb_switch=="On" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy1
+else if bb_switch=="Off" and vol_switch=="On" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy2
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="On" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= eBuy3
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="On" and bo_switch=="Off"
+    PBuy:= eBuy4
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="On"
+    PBuy:= eBuy5
+else if bb_switch=="Off" and vol_switch=="Off" and rsi_switch=="Off" and macd_switch=="Off" and bo_switch=="Off"
+    PBuy:= na
+ 
+//Exit- Rsi-Inputs
+rsi_switch1 = input.session(defval="Off", title="Exit_RSI_On_OFF", options=["Off", "On"], group = "Exit_RSI_Settings")
+rsi_len1 = input.int(14, "Exit_RSI Length", group="Exit_RSI_Settings")
+overBought1 = input( 70 , title = "Exit_Upper-Level", group = "Exit_RSI_Settings")
+overSold1 = input( 30 , title = "Exit_Lower-Level", group = "Exit_RSI_Settings")
+rsiValue1 = ta.rsi(close, rsi_len1)
+var bool PSell1 = na
+if rsi_switch1=="On"
+    PSell1 := ta.crossover(rsiValue1, overBought1) or ta.crossunder(rsiValue1, overSold1)
+else if rsi_switch1=="Off"
+    PSell1 := na
+///Volume_Exit
+vol_switch1 = input.session(defval="Off", title="Exit_Volume_On_OFF", options=["Off", "On"], group = "Exit_Volume_Settings")
+vol_per1 = input.int(defval=20,title = "Exit_Volume-Average_Period",minval=1, group = "Exit_Volume_Settings")
+currentAvgVol1 = ta.sma(volume, vol_per1)
+var bool PSell2 = na
+if vol_switch1=="On"
+    PSell2 := volume < currentAvgVol1
+else if vol_switch1=="Off"
+    PSell2 := na
+///Macd_Exit
+macd_switch1 = input.session(defval="Off", title="Exit_MACD_On_OFF", options=["Off", "On"], group = "Exit_Macd_Settings")
+fast_length1 = input(title = "Exit_Fast Length", defval = 12, group = "Exit_Macd_Settings")
+slow_length1 = input(title = "Exit_Slow Length", defval = 26, group = "Exit_Macd_Settings")
+src2 = input(title = "Exit_Source", defval = close, group = "Macd_Settings")
+signal_length1 = input.int(title = "Exit_Signal Smoothing", minval = 1, maxval = 50, defval = 9, display = display.data_window, group = "Macd_Settings")
+sma_source1 = input.string(title = "Exit_Oscillator MA Type", defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "Macd_Settings")
+sma_signal1 = input.string(title = "Exit_Signal Line MA Type", defval = "EMA", options = ["SMA", "EMA"], display = display.data_window, group = "Macd_Settings")
+// Calculating MACD for Exit
+fast_ma1 = sma_source1 == "SMA" ? ta.sma(src2, fast_length1) : ta.ema(src2, fast_length1)
+slow_ma1 = sma_source1 == "SMA" ? ta.sma(src2, slow_length1) : ta.ema(src2, slow_length1)
+macd1 = fast_ma1 - slow_ma1
+signal1 = sma_signal1 == "SMA" ? ta.sma(macd1, signal_length1) : ta.ema(macd1, signal_length1)
+var bool PSell3 = na
+if macd_switch1=="On"
+    PSell3 := ta.crossunder(macd1, signal1)
+else if macd_switch1=="Off"
+    PSell3 := na
+// Define eSell based on exit module switches
+var bool eSell = false
+if rsi_switch1 == "On" and PSell1
+    eSell := true
+if vol_switch1 == "On" and PSell2
+    eSell := true
+if macd_switch1 == "On" and PSell3
+    eSell := true
+var int eSignal = 0
+var int eBuyPos = 0
+// Condition for re-entry: only when a fresh rsi buy condition (eBuy3) is met,
+// no trade is active (`not in_trade`), AND
+// we are not on the same 5-minute bar where a stop loss was hit.
+can_reenter = not in_trade and (sl_hit_bar_time == 0 or time("5") != sl_hit_bar_time)
+// PBuy already consolidates all module conditions.
+eBuy = eBuy3 and st and barstate.isconfirmed and can_reenter
+plot(eBuy ? 1.1 : 0, title="Final eBuy Signal", color=color.black, style=plot.style_columns, histbase=0)
+eSignal := eBuy ? 1 : eSell and eSignal[1] > 0 ? 0 : eSignal[1]
+eBuyPos := eBuy ? 1 : eSell and eBuyPos[1] > 0 ? 0 : eBuyPos[1]
+// eBuyHigh and eBuyLow capture the high/low of the *overall* entry candle (when eBuy becomes true)
+// These are now just placeholders, the actual values used for range are fetched from 5min bar
+eBuyHigh = ta.valuewhen(eBuy, high, 0)
+eBuyLow = ta.valuewhen(eBuy, low, 0)
+var int MainSignal = 0
+BuySignal = eBuyPos[1] > 0 and high > eBuyHigh[1] and st
+SellSignal = (nz(MainSignal[1]) == 1)
+MainSignal := BuySignal ? 1 : SellSignal ? 0 : MainSignal[1]
+symbol = syminfo.ticker
+BuyPrice = ta.valuewhen(eBuy and strategy.position_size <= 0, eBuyHigh, 0) // Kept for reference but not used for SL/Target calc
+LESym = str.tostring(syminfo.ticker)
+LXSym = str.tostring(syminfo.ticker)
+SESym = str.tostring(syminfo.ticker)
+SXSym = str.tostring(syminfo.ticker)
+ 
+var float BuyTradeQty = na
+BuyTradeQty := paraQty*paraLot
+ 
+buyData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LESym + '","OrderType": "BUY","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(BuyTradeQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+ 
+// --- Variables to store entry details for delayed SL/Target calculation ---
+var int entry_5min_time = 0 // Stores the time of the 5-minute bar when entry occurred
+var float entry_price_for_sl = na // Stores the entry price for SL/Target calculation reference
+// --- Global Scope: Fetch 5-minute candle data unconditionally ---
+// The high/low of the 5-minute bar that *just closed* (equivalent to [1] for current bar if this is 1min TF)
+var float _entry_5min_high_fetched = na
+var float _entry_5min_low_fetched = na
+_entry_5min_high_fetched := request.security(syminfo.tickerid, "5", high[1], lookahead = barmerge.lookahead_off)
+_entry_5min_low_fetched := request.security(syminfo.tickerid, "5", low[1], lookahead = barmerge.lookahead_off)
+ 
+// Strict Previous 5-min candle low for SL (using low[1] on 5-min TF, i.e., previous completed 5-min candle low)
+var float _sl_ref_5min_low_fetched = na
+_sl_ref_5min_low_fetched := request.security(syminfo.tickerid, "5", low[1], lookahead = barmerge.lookahead_off)
+ 
+// Previous 5-min candle high and low for target reference (still low[1])
+var float _prev_5min_high_for_target = na
+var float _prev_5min_low_for_target = na
+_prev_5min_high_for_target := request.security(syminfo.tickerid, "5", high[1], lookahead = barmerge.lookahead_off)
+_prev_5min_low_for_target := request.security(syminfo.tickerid, "5", low[1], lookahead = barmerge.lookahead_off)
+ 
+// NEW: Variable to explicitly fetch the high of the previous 5-minute candle for TSL calculations
+var float _prev_5min_high_for_tsl = na
+_prev_5min_high_for_tsl := request.security(syminfo.tickerid, "5", high[1], lookahead = barmerge.lookahead_off)
+var float _prev_5min_low_for_tsl = na
+_prev_5min_low_for_tsl := request.security(syminfo.tickerid, "5", low[1], lookahead = barmerge.lookahead_off)
+ 
+if eBuy and strategy.position_size <= 0
+    strategy.entry('BUY', strategy.long, qty = BuyTradeQty, comment="Buy", alert_message="["+buyData+"]")
+    entry_price_for_sl := strategy.position_avg_price // Capture actual entry price for SL/Target
+    entry_5min_time := time("5") // Capture the 5-minute bar time of entry for delayed SL/Target
+BuyPrice := strategy.position_avg_price // Kept for other calculations like TSL or plotting
+in_trade := true // Set the in_trade flag
+// Declare persistent variables for entry candle's high and low (overall entry, used for range calculation later)
+var float stored_entry_candle_high = na
+var float stored_entry_candle_low = na
+ 
+// Variables for targets and stop loss
+var float BuyTGT1 = na
+var float BuyTGT2 = na
+var float BuyTGT3 = na
+var float BuyTGT4 = na
+var float BuySL = na // This will now be assigned from calculated_sl_value
+var float BuyTSL = na // Initialized to na, as used in copied TSL logic
+var float T1ExQty = na
+var float T2ExQty = na
+var float T3ExQty = na
+ 
+us = (paraSLMode != "Off")
+ 
+paraTGTBuffer = input.float(0.15, title="Target Buffer (pts)", minval=0, group="Target Settings")
+ 
+///Breakout mode
+if (strategy.position_size > 0 and strategy.position_size[1] <= 0 and barstate.isconfirmed)
+    rsi_crossover_confirmed := false
+    crossover_candle_high := na
+    if (paraSLMode=="%")
+        BuySL := BuyPrice * (1-(paraSL/100))
+    else if (paraSLMode=="Pts")
+        BuySL := BuyPrice - (paraSL)
+    else if (paraSLMode=="Previous_5min_Candle_Low")
+        BuySL := _sl_ref_5min_low_fetched
+    else if (paraSLMode=="ATR-Based")
+        sl_atr1=((paraSL)*atr1)
+        SL_Atr=BuyPrice - sl_atr1
+        BuySL := SL_Atr    
+ 
+// --- Target Calculation (now happens after BuySL is assigned) ---
+if (strategy.position_size > 0 and strategy.position_size[1] <= 0 and barstate.isconfirmed)
+    // Always use "Previous Candle" for target reference
+    stored_entry_candle_high := _prev_5min_high_for_target
+    stored_entry_candle_low := _prev_5min_low_for_target
+ 
+    T1ExQty := (math.round(((BuyTradeQty) * paraT1Qty / 100) / paraLot)) * paraLot
+    T2ExQty := (math.round(((BuyTradeQty) * paraT2Qty / 100) / paraLot)) * paraLot
+    T3ExQty := (math.round(((BuyTradeQty) * paraT3Qty / 100) / paraLot)) * paraLot
+ 
+    // Calculate entry_candle_range for Range_Ratio targets
+    float entry_candle_range_for_target = na
+    if not na(stored_entry_candle_high) and not na(stored_entry_candle_low)
+        entry_candle_range_for_target := stored_entry_candle_high - stored_entry_candle_low
+ 
+    // Calculate Target 1
+    if (paraTGTMode1=="%")
+        BuyTGT1 := BuyPrice * (1+(paraTGT1/100))
+    else if (paraTGTMode1=="Pts")
+        BuyTGT1 := BuyPrice + (paraTGT1)
+    else if (paraTGTMode1=="ATR")
+        BuyTGT1 :=BuyPrice + (atr1*(paraTGT1))
+    else if (paraTGTMode1=="BB")
+        Tar_BB1=(upper+paraTGT1)
+        BuyTGT1 := Tar_BB1
+    else if (paraTGTMode1=="Range_Ratio")
+        BuyTGT1 := stored_entry_candle_high + (entry_candle_range_for_target * paraTGT1)
+ 
+    // Calculate Target 2
+    if (paraTGTMode2=="%")
+        BuyTGT2 := BuyPrice * (1+(paraTGT2/100))
+    else if (paraTGTMode2=="Pts")
+        BuyTGT2 := BuyPrice + (paraTGT2)
+    else if (paraTGTMode2=="ATR")
+        Tar_Atr2=BuyPrice + (atr1*(paraTGT2))
+        BuyTGT2 := Tar_Atr2
+    else if (paraTGTMode2=="BB")
+        Tar_BB2=(upper+paraTGT2)
+        BuyTGT2 := Tar_BB2
+    else if (paraTGTMode2=="Range_Ratio")
+        BuyTGT2 := stored_entry_candle_high + (entry_candle_range_for_target * paraTGT2)
+ 
+    if (paraTGTMode3=="%")
+        BuyTGT3 := BuyPrice * (1+(paraTGT3/100))
+    else if (paraTGTMode3=="Pts")
+        BuyTGT3 := BuyPrice + (paraTGT3)
+    else if (paraTGTMode3=="ATR")
+        Tar_Atr3=BuyPrice + (atr1*(paraTGT3))
+        BuyTGT3 := Tar_Atr3
+    else if (paraTGTMode3=="BB")
+        Tar_BB3=(upper+paraTGT3)
+        BuyTGT3 := Tar_BB3
+    else if (paraTGTMode3=="Range_Ratio")
+        BuyTGT3 := stored_entry_candle_high + (entry_candle_range_for_target * paraTGT3)
+ 
+    // Calculate Target 4
+    if (paraTGTMode4=="%")
+        BuyTGT4 := BuyPrice * (1+(paraTGT4/100))        
+    else if (paraTGTMode4=="Pts")
+        BuyTGT4 := BuyPrice + (paraTGT4)
+    else if (paraTGTMode4=="ATR")
+        Tar_Atr4=BuyPrice + (atr1*(paraTGT4))
+        BuyTGT4 := Tar_Atr4
+    else if (paraTGTMode4=="BB")
+        Tar_BB4=(upper+paraTGT4)
+        BuyTGT4 := Tar_BB4
+    else if (paraTGTMode4=="Range_Ratio")
+        BuyTGT4 := stored_entry_candle_high + (entry_candle_range_for_target * paraTGT4)
+ 
+    // Set targets to na if input is 0 (effectively disabling them)
+    if (paraTGT1 == 0)
+        BuyTGT1 := na
+    if (paraTGT2 == 0)
+        BuyTGT2 := na
+    if (paraTGT3 == 0)
+        BuyTGT3 := na
+    if (paraTGT4 == 0)
+        BuyTGT4 := na
+ 
+/////Breakout mode - TSL logic (Replicated EXACTLY from FINAL - TSL ATR WORKING SHIRO)
+if(strategy.position_size > 0 and strategy.position_size[1] > 0 and barstate.isconfirmed)
+    // Initialize BuyTSL to its previous value or na if TSL mode is off
+    BuyTSL := na
+    if (paraTSLMode != "Off")
+        if (paraTSLMode=="%")
+            BuyTSL := _prev_5min_low_for_tsl * (1-(paraTSL/100)) // Use 5-min high for TSL
+        else if (paraTSLMode=="Pts")
+            BuyTSL := _prev_5min_low_for_tsl - paraTSL // Use 5-min high for TSL
+        else if (paraTSLMode=="Atr-Based")
+            Tsl_Atr=(atr1*(paraTSL))
+            BuyTSL := _prev_5min_low_for_tsl - Tsl_Atr // Use 5-min high for TSL
+        else if (paraTSLMode=="Custom")
+            // Custom TSL logic: Ensure explicit assignment to BuySL
+            // If the price moves enough, update BuySL directly
+            if (_prev_5min_high_for_tsl >= (BuyPrice + paraTSL) and BuySL < BuyPrice) // Use 5-min high for TSL
+                BuySL := BuyPrice
+            else if (_prev_5min_high_for_tsl >= (BuyPrice + paraCustomTSLMove)) // Use 5-min high for TSL
+                BuySL := BuySL + paraCustomTSLTrail
+            // BuyTSL is not explicitly set in Custom mode here, meaning it remains `na` if not set by other modes.
+            // This is crucial for the `if (not na(BuyTSL) and BuySL < BuyTSL)` condition below.
+    // Update BuySL with the trailing stop loss if applicable (only if BuyTSL was set by a non-custom mode)
+    if (not na(BuyTSL) and BuySL < BuyTSL)
+        BuySL := BuyTSL
+    // Halfway Settings - ensure explicit assignment or state preservation
+    if (paraTGTTSL1)
+        if (high[1] >= BuyTGT1 and BuySL < BuyPrice) // Use 5-min high for TSL
+            BuySL := BuyPrice+((BuyTGT1-BuyPrice)/2)
+   
+    if (paraTGTTSL2)
+        if (high[1] >= BuyTGT2 and BuySL < BuyTGT1) // Use 5-min high for TSL
+            BuySL := BuyPrice+((BuyTGT2-BuyTGT1)/2)
+   
+    if (paraTGTTSL3)
+        if (high[1] >= BuyTGT3 and BuySL < BuyTGT2) // Use 5-min high for TSL
+            BuySL := BuyPrice+((BuyTGT3-BuyTGT2)/2)
+    // Fullway Settings - ensure explicit assignment or state preservation
+    if (paraTGTTSL4)
+        if (high[1] >= BuyTGT1 and BuySL < BuyPrice) // Use 5-min high for TSL
+            BuySL := BuyPrice
+   
+    if (paraTGTTSL5)
+        if (high[1] >= BuyTGT2 and BuySL < BuyTGT1) // Use 5-min high for TSL
+            BuySL := ((BuyTGT1))
+   
+    if (paraTGTTSL6)
+        if (high[1] >= BuyTGT3 and BuySL < BuyTGT2) // Use 5-min high for TSL
+            BuySL := ((BuyTGT2))
+varip bool T1_hit_flag = false
+varip bool retrace_timer_active = false
+varip int retrace_start_time = 0
+varip bool T2_hit_flag = false
+varip bool T3_hit_flag = false
+retrace_wait_minutes = input.int(2, "Retrace Wait Minutes", minval=1, group="New Exit Logic")
+ 
+// Check if T1 has been hit
+if (strategy.position_size > 0 and high >= BuyTGT1)
+    T1_hit_flag := true
+if (strategy.position_size > 0 and high >= BuyTGT2)
+    T2_hit_flag := true
+if (strategy.position_size > 0 and high >= BuyTGT3)
+    T3_hit_flag := true
+// Reset flags when position is closed by any means
+if (strategy.position_size <= 0 and strategy.position_size[1] > 0)
+    T1_hit_flag := false
+    T2_hit_flag := false
+    T3_hit_flag := false
+    retrace_timer_active := false
+    retrace_start_time := 0
+// New Exit Logic
+// --- 1️⃣ AFTER T1 ONLY → 2-min delayed exit if price comes back to cost ---
+if (strategy.position_size > 0 and T1_hit_flag and not T2_hit_flag and not T3_hit_flag)
+    if (close <= BuyPrice)
+        if (not retrace_timer_active)
+            retrace_timer_active := true
+            retrace_start_time := timenow
+        // Wait for 2 minutes before forcing exit
+        if (retrace_timer_active and (timenow - retrace_start_time) >= retrace_wait_minutes*60000 and close < BuyPrice)
+            remaining_qty = strategy.position_size // Capture actual remaining qty
+            strategy.cancel('LongExit')
+            strategy.cancel('LongT1Exit')
+            strategy.cancel('LongT2Exit')
+            strategy.cancel('LongT3Exit')
+            full_exit_alert = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym +'","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(remaining_qty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+            alert("Final Exit Triggered! Qty: " + str.tostring(remaining_qty), alert.freq_once_per_bar)
+ 
+            // Ensure order is executed for full remaining quantity
+            strategy.close(id='BUY', comment="CTC Exit after 2-min delay (post T1)", alert_message="["+full_exit_alert+"]")
+    else
+        retrace_timer_active := false
+        retrace_start_time := 0
+ 
+// --- 2️⃣ AFTER T2 OR T3 → INSTANT exit if price comes back to cost ---
+if (strategy.position_size > 0 and (T2_hit_flag or T3_hit_flag))
+    retrace_timer_active := false
+    retrace_start_time := 0
+    if (close <= BuyPrice)
+        remaining_qty = strategy.position_size // Capture actual remaining qty
+        strategy.cancel('LongExit')
+        strategy.cancel('LongT1Exit')
+        strategy.cancel('LongT2Exit')
+        strategy.cancel('LongT3Exit')
+        full_exit_alert = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym +'","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(remaining_qty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+        alert("Final Exit Triggered! Qty: " + str.tostring(remaining_qty), alert.freq_once_per_bar)
+ 
+        // Ensure order is executed for full remaining quantity
+        strategy.close(id='BUY', comment="Instant CTC Exit after T2/T3", alert_message="["+full_exit_alert+"]")
+ 
+qty1 = BuyTradeQty - (T1ExQty + T2ExQty + T3ExQty)
+// Exit alert messages
+TP1sellData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym + '","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T1ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+TP1coverData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + SXSym + '","OrderType": "COVER","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T1ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+TP2sellData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym + '","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T2ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+TP2coverData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + SXSym + '","OrderType": "COVER","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T2ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+TP3sellData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym + '","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T3ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+TP3coverData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + SXSym + '","OrderType": "COVER","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(T3ExQty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+ 
+sellData = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym + '","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(qty1)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+if (strategy.position_size > 0 )
+    if (paraT1Qty > 0 and paraTGT1 > 0)
+        strategy.exit(id="LongT1Exit", from_entry="BUY", qty = T1ExQty, limit=BuyTGT1 - paraTGTBuffer, comment="BT1", alert_message="["+TP1sellData+"]", oca_name = "LX1")
+    if (paraT2Qty > 0 and paraTGT2 > 0)
+        strategy.exit(id="LongT2Exit", from_entry="BUY", qty = T2ExQty, limit=BuyTGT2 - paraTGTBuffer, comment="BT2", alert_message="["+TP2sellData+"]", oca_name = "LX2")
+    if (paraT3Qty > 0 and paraTGT3 > 0)
+        strategy.exit(id="LongT3Exit", from_entry="BUY", qty = T3ExQty, limit=BuyTGT3 - paraTGTBuffer, comment="BT3", alert_message="["+TP3sellData+"]", oca_name = "LX3")
+    strategy.exit(id='LongExit', comment="Exit Buy", from_entry='BUY',qty =qty1, limit=BuyTGT4 - paraTGTBuffer, alert_message="["+sellData+"]")
+////////////////////////////////////////////////////////////////////////////////////////////////////
+if (et or PSell1 or PSell2 or PSell3 or low <= BuySL) and strategy.position_size > 0
+    remaining_qty = strategy.position_size // Capture actual remaining qty
+    // Check if the exit was due to SL and store the current bar's 5-minute time
+    if (low <= BuySL) // Removed || low <= BuyTSL as BuyTSL is now used to update BuySL
+        sl_hit_bar_time := time("5") // Store the time of the current 5-minute bar
+ 
+    strategy.cancel('LongExit')
+    strategy.cancel('LongT1Exit')
+    strategy.cancel('LongT2Exit')
+    strategy.cancel('LongT3Exit')
+ 
+    // Generate a correct alert with full qty
+    full_exit_alert = '{"Exchange": "' + str.tostring(syminfo.prefix) + '","Close": ' + str.tostring(close) + ',"Ticker": "' + LXSym +'","OrderType": "SELL","ProductType": "' + paraProductType + '","InstrumentType": "' + paraInstr + '","Quantity": '+str.tostring(remaining_qty)+', "Strategy": "'+paraStag+'", "Code": "'+paraCode+'"}'
+    alert("Final Exit Triggered! Qty: " + str.tostring(remaining_qty), alert.freq_once_per_bar)
+ 
+// Ensure order is executed for full remaining quantity
+    strategy.close(id='BUY', comment="Final Exit", alert_message="["+full_exit_alert+"]")
+ 
+in_trade := false // Reset the in_trade flag on exit
+previous_5min_high := na // Reset the stored high on exit
+stored_entry_candle_high := na // Reset stored entry candle high on exit
+stored_entry_candle_low := na // Reset stored entry candle low on exit
+ 
+// Reset sl_hit_bar_time when a new 5-minute candle starts and no trade is active
+if (ta.change(time("5")) and not in_trade)
+    sl_hit_bar_time := 0
+ 
+// Cancel all pending orders if position size is zero (after an exit)
+if (strategy.position_size <= 0)
+    strategy.cancel('LongExit')
+    strategy.cancel('LongT1Exit')
+    strategy.cancel('LongT2Exit')
+    strategy.cancel('LongT3Exit')
+ 
+// Plotting current position details
+plot((strategy.position_size > 0)?BuyPrice:na, color=color.fuchsia, linewidth=1, style=plot.style_linebr)
+plot((strategy.position_size > 0)?BuyTGT1:na, color=color.blue, linewidth=1, style=plot.style_linebr)
+plot((strategy.position_size > 0)?BuyTGT2:na, color=color.blue, linewidth=1, style=plot.style_linebr)
+plot((strategy.position_size > 0)?BuyTGT3:na, color=color.blue, linewidth=1, style=plot.style_linebr)
+plot((strategy.position_size > 0)?BuyTGT4:na, color=color.blue, linewidth=1, style=plot.style_linebr)
+plot((strategy.position_size > 0)?_sl_ref_5min_low_fetched:na, color=color.orange, linewidth=1, style=plot.style_linebr)

@@ -1,9 +1,7 @@
-
 # ==================== CONFIGURATION VARIABLES ====================
 # API Credentials
-client_id = 'DF26CD57LX-100'
-secret_key = '5SS5D9X5TR'
-
+client_id = 'GGCF0BVPMD-100'
+secret_key = 'Q4847DPP68'
 redirect_uri = 'https://fessorpro.com/'
 response_type = "code"  
 state = "sample_state"
@@ -18,12 +16,10 @@ threshold = 12
 take_type = {'FIXED': 1, 'PERCENTAGE': 2, 'RANGE': 3, 'ATR': 4}
 T1 = 'RANGE'; v1 = 0.3
 T2 = 'RANGE'; v2 = 1; v2_pos = 0.25
-T3 = 'PERCENTAGE'; v3 = 20; v3_pos = 0.25
+T3 = 'RANGE'; v3 = 1.5; v3_pos = 0.25
 T4 = 'RANGE'; v4 = 2; v4_pos = 0.25
 T5 = 'RANGE'; v5 = 3; v5_pos = 0.25
 T6 = 'RANGE'; v6 = 4; v6_pos = 0
-
-atr_sl_target='t3'
 
 wait_buffer = 120
 lot_size = {}
@@ -31,7 +27,7 @@ quantity_position = 4
 candle_1 = '5'
 candle_2 = '15'
 candle_3 = '60'
-capital = 800_000
+capital = 300_000
 min_15_condition = True
 min_60_condition = True
 index_15_condition = True
@@ -56,7 +52,7 @@ type2 = 'INDEX'
 fyers_underlying_index = f"{exchange}:{index_name}-{type2}"
 kite_index = {'NIFTY50': 256265, 'NIFTYBANK': 260105}
 kite_underlying_index_token = kite_index.get(index_name)
-symbol_list = ['NIFTY2631024400PE','NIFTY2631024400CE']
+symbol_list = ['NIFTY2630224900PE','NIFTY2630224550CE']
 fyers_initials = 'NSE:'
 exchange_kite = 'NFO'
 

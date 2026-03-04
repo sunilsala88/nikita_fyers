@@ -1,7 +1,0 @@
-pyotp
-pandas
-pendulum
-fyers-apiv3
-kiteconnect
-certifi
-numpy
